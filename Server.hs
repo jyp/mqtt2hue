@@ -115,29 +115,25 @@ bridgeConfig userId = do
   } where ServerConfig {..} = serverConfig
 
 configuredLights :: String -> Handler (IntMap Light)
-configuredLights _ = return $
-  fromList [(1,Light {state = LightState {}
-                     ,swUpdate = SwUpdate {}
-                     ,_type = "Color temperature light"
-                     ,name = "Hue ambiance lamp in my office"
-                     ,modeLid = "LTW010" -- ?
-                     ,manufacturerName = "Signify"
-                     ,productName = "Hue ambiance lamp"
-                     ,capabilities = Capabilities
-                       { certified = False,
-                         control = Ct {}
-                       }
-                     ,config = LightConfig {
-                         archetype = "sultanbulb",
-                         function = "functional",
-                         direction = "omnidirectional",
-                         startup = Startup {}}
-                     ,uniqueid = _
-                     ,swversion = _})]
+configuredLights _ = return $ mempty
+  -- fromList [(1,Light {state = LightState {}
+  --                    ,swUpdate = SwUpdate {}
+  --                    ,_type = "Color temperature light"
+  --                    ,name = "Hue ambiance lamp in my office"
+  --                    ,modeLid = "LTW010" -- ?
+  --                    ,manufacturerName = "Signify"
+  --                    ,productName = "Hue ambiance lamp"
+  --                    ,capabilities = Capabilities
+  --                      { certified = False,
+  --                        control = Ct {}
+  --                      }
+  --                    ,config = LightConfig {
+  --                        archetype = "sultanbulb",
+  --                        function = "functional",
+  --                        direction = "omnidirectional",
+  --                        startup = Startup {}}
+  --                    ,uniqueid = _
+  --                    ,swversion = _})]
 
 app1 :: Application
 app1 = serve (Proxy @HueApi) server1
-
-main :: IO ()
-main = run 8081 app1
-

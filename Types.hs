@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE EmptyDataDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -253,7 +254,10 @@ data InternetServices = InternetServices {
 instance ToJSON InternetServices
 data Connection = Connected | Disconnected
   deriving (Eq, Show, Generic)
-instance ToJSON Connection
+instance ToJSON Connection where
+  toJSON = \case
+    Connected -> "connected"
+    Disconnected -> "disconnected"
 data Backup = Backup { status :: BackupStatus, errorcode :: Int}
   deriving (Eq, Show, Generic)
 instance ToJSON Backup

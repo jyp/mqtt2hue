@@ -19,10 +19,15 @@ executable mqtt2hue
   build-depends: blaze-html
   build-depends: blaze-markup
   build-depends: warp
+  build-depends: warp-tls
+  build-depends: net-mqtt
   build-depends: wai
+  build-depends: wai-logger
+  build-depends: wai-enforce-https
   build-depends: time
   build-depends: string-conversions
   build-depends: http-media
+  build-depends: http-types
   build-depends: mtl
   build-depends: attoparsec
   build-depends: bytestring
