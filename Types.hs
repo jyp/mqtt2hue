@@ -45,7 +45,8 @@ import Data.IntMap
 import Data.Time.Clock
 import Data.Time.LocalTime
 
-type HueApi =    "api" :> Capture "userid" String :> "config" :> Get '[JSON] Config
+type HueApi =    "api" :>                            "config" :> Get '[JSON] Config
+           :<|>  "api" :> Capture "userid" String :> "config" :> Get '[JSON] Config
            :<|>  "api" :> Capture "userid" String :> "lights" :> Get '[JSON] (IntMap Light)
 
 
@@ -178,9 +179,13 @@ data GroupState = GroupState { all_on, any_on :: Bool}
 
 data Config = Config
   { name :: String,
-    zigbeechannel :: Int,
+    datastoreversion :: String,
+    swversion :: String,
     bridgeid :: String,
     mac :: String,
+    factorynew :: Bool,
+
+    zigbeechannel :: Int,
     dhcp :: Bool,
     ipaddress :: String,
     netmask :: String,
@@ -191,8 +196,6 @@ data Config = Config
     localtime :: TimeStamp,
     timezone :: String,
     modelid :: String,
-    datastoreversion :: String,
-    swversion :: String,
     apiversion :: String,
     swupdate :: CfgUpdate1,
     swupdate2 :: CfgUpdate2 ,
@@ -201,7 +204,6 @@ data Config = Config
     portalconnection :: Connection,
     portalstate :: PortalState ,
     internetservices :: InternetServices,
-    factorynew :: Bool,
     replacesbridgeid :: Null,
     backup :: Backup,
     starterkitid :: String,

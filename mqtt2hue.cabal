@@ -40,3 +40,4 @@ executable mqtt2hue
   main-is: Main.hs
   other-modules:
    Server
+   Types

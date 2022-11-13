@@ -58,5 +58,5 @@ main :: IO ()
 main = withStdoutLogger $ \aplogger -> do
   let tlsOpts = tlsSettings "certificate/cert.pem" "certificate/privkey.pem"
       warpOpts = setLogger aplogger $ defaultSettings
-  _ <- forkIO $ runSettings (setPort 80 warpOpts) app
-  runTLS tlsOpts (setPort 443 $ warpOpts) app
+  _ <- forkIO $ runSettings (setPort 80 warpOpts) app1
+  runTLS tlsOpts (setPort 443 $ warpOpts) app1

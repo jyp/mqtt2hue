@@ -46,9 +46,11 @@ import Types
 
 
 server1 :: Server HueApi
-server1 =    bridgeConfig
+server1 =    bridgePublicConfig
+        :<|> bridgeConfig
         :<|> configuredLights
 
+serverConfig :: ServerConfig
 serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
                             ,ipaddress = "192.168.1.50"
                             ,netmask = "255.255.255.0"
@@ -56,7 +58,10 @@ serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
                             }
 
 bridgeConfig :: String -> Handler Config
-bridgeConfig userId = do
+bridgeConfig _userId = bridgePublicConfig
+
+bridgePublicConfig :: Handler Config
+bridgePublicConfig = do
  now <- liftIO getCurrentTime
  return $ Config
   {name = "Philips hue"
