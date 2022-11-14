@@ -14,6 +14,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
 
+module MQTTAPI where
 
 import GHC.Generics
 import qualified Data.Aeson.Parser
@@ -37,7 +38,7 @@ instance ToJSON ColorMode where
     TemperatureMode -> "color_temp"
     XYMode -> "xy"
 
-data OnOff = OFF | ON deriving Generic
+data OnOff = OFF | ON deriving (Generic, Eq, Show)
 instance FromJSON OnOff
 instance ToJSON OnOff
 

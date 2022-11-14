@@ -37,8 +37,44 @@ executable mqtt2hue
   build-depends: servant
   build-depends: servant-server
   build-depends: aeson
+  build-depends: template-haskell
+  build-depends: network-uri
   main-is: Main.hs
+  ghc-options: -threaded -rtsopts
   other-modules:
    Server
    Types
    HueAPI
+   MQTTAPI
+   MyAeson
+
+executable mqtttest
+  default-language: Haskell2010
+  build-depends: base
+  build-depends: Cabal
+  build-depends: directory
+  build-depends: blaze-html
+  build-depends: blaze-markup
+  build-depends: warp
+  build-depends: warp-tls
+  build-depends: net-mqtt
+  build-depends: wai
+  build-depends: wai-logger
+  build-depends: wai-enforce-https
+  build-depends: time
+  build-depends: string-conversions
+  build-depends: http-media
+  build-depends: http-types
+  build-depends: mtl
+  build-depends: attoparsec
+  build-depends: bytestring
+  build-depends: base-compat
+  build-depends: lucid
+  build-depends: containers
+  build-depends: servant
+  build-depends: servant-server
+  build-depends: aeson
+  build-depends: template-haskell
+  build-depends: network-uri
+  main-is: Trivial.hs
+  ghc-options: -threaded -rtsopts

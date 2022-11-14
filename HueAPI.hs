@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE EmptyDataDeriving #-}
@@ -13,15 +14,18 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module HueAPI where
 
 import Prelude ()
 import Prelude.Compat
-
+import Data.Char (toLower)
 import Control.Monad.Except
 import Control.Monad.Reader
+import MyAeson
 import Data.Aeson
+import Data.Aeson.TH
 import Data.Aeson.Types
 import Data.Attoparsec.ByteString
 import Data.ByteString (ByteString)
@@ -41,7 +45,7 @@ import Text.Blaze.Html.Renderer.Utf8
 import Servant.Types.SourceT (source)
 import qualified Data.Aeson.Parser
 import qualified Text.Blaze.Html
-import Data.IntMap
+import Data.Map
 import Data.Time.Clock
 import Data.Time.LocalTime
 
@@ -49,8 +53,8 @@ type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUse
            :<|>  "api" :>                            "config" :> Get '[JSON] Config
            :<|>  "api" :> Capture "userid" String :>             Get '[JSON] Everything
            :<|>  "api" :> Capture "userid" String :> "config" :> Get '[JSON] Config
-           :<|>  "api" :> Capture "userid" String :> "lights" :> Get '[JSON] (IntMap Light)
-           :<|>  "api" :> Capture "userid" String :> "groups" :> Get '[JSON] (IntMap Group)
+           :<|>  "api" :> Capture "userid" String :> "lights" :> Get '[JSON] (Map Int Light)
+           :<|>  "api" :> Capture "userid" String :> "groups" :> Get '[JSON] (Map Int Group)
 
 data CreatedUser = CreatedUser {success :: UserName}
   deriving (Eq, Show, Generic)
@@ -66,7 +70,7 @@ instance ToJSON UserName
 
 
 
-data SwUpdate = SwUpdate {state :: Updates, lastinstall :: String}
+data SwUpdate = SwUpdate {state :: Updates, lastinstall :: TimeStamp}
   deriving (Eq, Show, Generic)
 instance ToJSON SwUpdate
 data CfgUpdate1 = CfgUpdate1 {
@@ -88,11 +92,13 @@ data DeviceTypes =  DeviceTypes {
 instance ToJSON DeviceTypes
 data Updates = NoUpdates
   deriving (Eq, Show, Generic)
-instance ToJSON Updates
+instance ToJSON Updates where
+  toJSON = \case
+    NoUpdates -> "noupdates"
 
 data Light = Light { state :: LightState
                    , swUpdate :: SwUpdate
-                   , _type :: String
+                   , _type :: LightType
                    , name :: String
                    , modeLid :: String
                    , manufacturerName :: String
@@ -119,23 +125,37 @@ instance ToJSON Light where
 instance ToJSON LightState
 instance ToJSON Effect
 instance ToJSON Alert
-instance ToJSON ColorMode
-instance ToJSON LightMode
+instance ToJSON ColorMode where
+  toJSON = \case
+     CT -> "ct"
+     XY -> "xy"
+instance ToJSON LightMode where
+  toJSON = \case
+    HomeAutomation -> "homeautomation"
 instance ToJSON Capabilities
 instance ToJSON Streaming
 instance ToJSON Control
 instance ToJSON Ct
-instance ToJSON ColorGamutType
+instance ToJSON ColorGamutType where
+  toJSON = \case
+    C -> "C"
+    Other -> "other"
 instance ToJSON LightConfig
 instance ToJSON Startup
-instance ToJSON StartupMode
-data LightType = Dimmable | ColorTemperature | ExtendedColorLight
+  
+data LightType = DimmableLight | TemperatureLight | ExtendedColorLight
   deriving (Eq, Show, Generic)
+instance ToJSON LightType where
+  toJSON = \case
+    DimmableLight -> "Dimmable light"
+    TemperatureLight -> "Color temperature light"
+    ExtendedColorLight -> "Extended color light"
+
 data LightState = LightState
   {on :: Bool
   ,bri :: Int
-  ,hue :: Int
-  ,sat :: Int
+  -- ,hue :: Int -- FIXME
+  -- ,sat :: Int
   ,ct :: Int
   ,effect :: Effect
   ,xy :: [Float]
@@ -150,6 +170,7 @@ data Effect = None
   deriving (Eq, Show, Generic)
 data ColorMode = CT | XY
   deriving (Eq, Show, Generic)
+
 data LightMode = HomeAutomation
   deriving (Eq, Show, Generic)
 data LightConfig = LightConfig { archetype :: String
@@ -159,8 +180,12 @@ data LightConfig = LightConfig { archetype :: String
   deriving (Eq, Show, Generic)
 data Startup = Startup { mode :: StartupMode, configured :: Bool}
   deriving (Eq, Show, Generic)
-data StartupMode = Safety
+data StartupMode = Safety | Powerfail
   deriving (Eq, Show, Generic)
+instance ToJSON StartupMode where
+  toJSON = \case
+     Safety -> "safety"
+     Powerfail -> "powerfail"
 data Capabilities = Capabilities
   { certified :: Bool,
     control :: Control
@@ -169,38 +194,30 @@ data Capabilities = Capabilities
 data Streaming = Streaming { renderer :: Bool, proxy :: Bool}
   deriving (Eq, Show, Generic)
 
-data Control = NoControl | Ct {ct :: Ct} | FullColor {colorgamuttype :: ColorGamutType, colorgamut :: [[Float]]} 
+data Control = NoControl | Ct {ct :: Ct} | FullColor {colorgamuttype :: ColorGamutType, colorgamut :: Maybe [[Float]]} 
   deriving (Eq, Show, Generic)
-data ColorGamutType = C
+data ColorGamutType = C | Other
   deriving (Eq, Show, Generic)
 data Ct = CtValues {min :: Int,  max :: Int}
   deriving (Eq, Show, Generic)
 data Group = Group
   { name :: String
-  , lights :: [Int]
-  , sensors :: [Int]
+  , lights :: [String]
+  , sensors :: [String]
   , _type :: GroupType
   , state :: GroupState
   , recycle ::  Bool
   , _class :: String
   , action :: LightState
+  -- , precence :: Presence
+  -- , lightlevel :: LightLevel
   }
   deriving (Eq, Show, Generic)
-instance ToJSON Group where
-  toJSON Group{..} =
-    object ["name" .= name
-           ,"lights" .= lights 
-           ,"sensors" .= sensors 
-           ,"type" .= _type 
-           ,"state" .= state 
-           ,"recycle" .= recycle 
-           ,"class" .= _class 
-           ,"action" .= action]
 
 
 data Class = Office | Bedroom | Garage | LivingRoom | Hallway | Kitchen | Attic
   deriving (Eq, Show, Generic)
-data GroupType = Room
+data GroupType = Room | LightGroup
   deriving (Eq, Show, Generic)
 data GroupState = GroupState { all_on, any_on :: Bool}
   deriving (Eq, Show, Generic)
@@ -220,7 +237,7 @@ data Config = Config
     gateway :: String,
     proxyaddress :: String,
     proxyport :: Int,
-    utc :: TimeStamp, -- FIXME: case
+    _UTC :: TimeStamp,
     localtime :: TimeStamp,
     timezone :: String,
     modelid :: String,
@@ -237,11 +254,11 @@ data Config = Config
     starterkitid :: String,
     whitelist :: [WhiteListEntry]
   } deriving (Eq, Show, Generic)
-instance ToJSON Config
+
 data Null = Null
   deriving (Eq, Show, Generic)
 instance ToJSON Null where
-  toJSON HueAPI.Null = "null"
+  toJSON HueAPI.Null = Data.Aeson.Types.Null
 
 data CfgUpdate2 = CfgUpdate2 {
     checkforupdate :: Bool,
@@ -289,12 +306,14 @@ instance ToJSON Connection where
   toJSON = \case
     Connected -> "connected"
     Disconnected -> "disconnected"
-data Backup = Backup { status :: BackupStatus, errorcode :: Int}
+data Backup = Backup { status :: Status, errorcode :: Int}
   deriving (Eq, Show, Generic)
 instance ToJSON Backup
-data BackupStatus = Idle
+data Status = Idle
   deriving (Eq, Show, Generic)
-instance ToJSON BackupStatus
+instance ToJSON Status where
+  toJSON = \case
+    Idle -> "idle"
 data WhiteListEntry = WhiteListEntry
   deriving (Eq, Show, Generic)
 instance ToJSON WhiteListEntry
@@ -303,16 +322,19 @@ type TimeStamp = UTCTime
 data Dummy = Dummy deriving (Eq, Show, Generic)
 instance ToJSON Dummy
 data Everything = Everything
-  {lights :: IntMap Light
-  ,groups :: IntMap Group
+  {lights :: Map Int Light
+  ,groups :: Map Int Group
   ,config :: Config
-  ,schedules :: IntMap Dummy
-  ,scenes :: IntMap Dummy
-  ,rules :: IntMap Dummy
-  ,sensors :: IntMap Dummy
-  ,resoucelinks :: IntMap Dummy
+  ,schedules :: Map Int Dummy
+  ,scenes :: Map Int Dummy
+  ,rules :: Map Int Dummy
+  ,sensors :: Map Int Dummy
+  ,resoucelinks :: Map Int Dummy
   }
   deriving (Eq, Show, Generic)
-instance ToJSON Everything
 instance ToJSON GroupType
 instance ToJSON GroupState
+
+$(myDeriveToJSON ''Group)
+$(myDeriveToJSON ''Config)
+instance ToJSON Everything
