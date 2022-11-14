@@ -47,6 +47,7 @@ import           Network.Wai.Handler.WarpTLS         (runTLS, tlsSettings)
 import           Network.Wai.Middleware.EnforceHTTPS (EnforceHTTPSConfig (..))
 
 import qualified Network.Wai.Middleware.EnforceHTTPS as EnforceHTTPS
+import Control.Concurrent.MVar
 
 app = EnforceHTTPS.withConfig httpsConf app1
 
@@ -54,8 +55,11 @@ httpsConf :: EnforceHTTPSConfig
 httpsConf = EnforceHTTPS.defaultConfig { httpsPort = 443 }
 
 
+
 main :: IO ()
-main = mqttapp
+main = do
+  st <- newMVar blankServerState
+  mqttThread st
 
 -- main :: IO ()
 -- main = withStdoutLogger $ \aplogger -> do

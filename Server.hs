@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE EmptyDataDeriving #-}
@@ -15,37 +17,42 @@
 module Server where
 
 import Control.Monad.Except
-import Control.Monad.Reader
+-- import Control.Monad.Reader
 import Data.Aeson
-import Data.Aeson.Types
-import Data.Attoparsec.ByteString
-import Data.ByteString (ByteString)
-import Data.List
+-- import Data.Aeson.Types
+-- import Data.Attoparsec.ByteString
+-- import Data.ByteString (ByteString)
+-- import Data.List
 import Data.Map
 import Data.Maybe
 import Data.String.Conversions
-import Data.Time.Calendar
-import Data.Time.Calendar.OrdinalDate
+-- import Data.Time.Calendar
+-- import Data.Time.Calendar.OrdinalDate
 import Data.Time.Clock
 import Data.Time.LocalTime
-import GHC.Generics
-import Lucid
-import Network.HTTP.Media ((//), (/:))
+-- import GHC.Generics
+-- import Lucid
+-- import Network.HTTP.Media ((//), (/:))
 import Network.MQTT.Client
 import Network.MQTT.Topic
-import Network.MQTT.Types
+-- import Network.MQTT.Types
 import Network.URI
 import Network.Wai
-import Network.Wai.Handler.Warp
+-- import Servant.Types.SourceT (source)
+-- import System.Directory
+-- import Text.Blaze
+-- import Text.Blaze.Html.Renderer.Utf8
+-- import qualified Data.Aeson.Parser
+-- import qualified Text.Blaze.Html
+-- import Network.Wai.Handler.Warp
+import Data.Text (Text)
+import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
+import Control.Concurrent.MVar
+
 import Prelude ()
 import Prelude.Compat
 import Servant
-import Servant.Types.SourceT (source)
-import System.Directory
-import Text.Blaze
-import Text.Blaze.Html.Renderer.Utf8
-import qualified Data.Aeson.Parser
-import qualified Text.Blaze.Html
 
 import Types
 import HueAPI
@@ -71,7 +78,7 @@ bridgeConfig _userId = bridgePublicConfig
 
 createUser :: CreateUser -> Handler [CreatedUser]
 createUser CreateUser {..} = do
-  liftIO (putStrLn ("user-creation requested for " <> devicetype))
+  liftIO (Text.putStrLn ("user-creation requested for " <> devicetype))
   return [CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"]
 
 bridgePublicConfig :: Handler Config
@@ -133,38 +140,18 @@ bridgePublicConfig = do
   , ..
   } where ServerConfig {..} = serverConfig
 
-exampleLights :: Map Int Light
-exampleLights  = 
-  Data.Map.fromList [(1,Light {state = HueAPI.LightState { on = True
-                                         , bri = 23
-                                         -- , hue = 44
-                                         -- , sat = 15
-                                         , ct = 15
-                                         , effect = None
-                                         , xy = [12, 34]
-                                         , alert = Select
-                                         , colorMode = CT
-                                         , mode = HomeAutomation
-                                         , reachable = True}
-                     ,swUpdate = SwUpdate {state = NoUpdates
-                                          ,lastinstall = UTCTime (toEnum 0) (toEnum 0)
-                                          }
-                     ,_type = TemperatureLight
-                     ,name = "Hue ambiance lamp in my office"
-                     ,modeLid = "LTW010" -- ?
-                     ,manufacturerName = "Signify"
-                     ,productName = "Hue ambiance lamp"
-                     ,capabilities = Capabilities
-                       { certified = False,
-                         control = Ct {ct = CtValues {min = 0,max = 450}}
-                       }
-                     ,config = HueAPI.LightConfig {
-                         archetype = "sultanbulb",
-                         function = "functional",
-                         direction = "omnidirectional",
-                         startup = Startup {mode = Safety, configured = True}}
-                     ,uniqueid = "test"
-                     ,swversion = "test"})]
+blankLightState :: HueAPI.LightState
+blankLightState = HueAPI.LightState { on = True
+                                    , bri = 23
+                                    -- , hue = 44
+                                    -- , sat = 15
+                                    , ct = Nothing
+                                    , effect = None
+                                    , xy = Nothing
+                                    , alert = Select
+                                    , colorMode = Nothing
+                                    , mode = HomeAutomation
+                                    , reachable = True}
 
 lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
 lightStateMqtt2Hue MQTTAPI.LightState {..} = HueAPI.LightState
@@ -174,9 +161,9 @@ lightStateMqtt2Hue MQTTAPI.LightState {..} = HueAPI.LightState
   -- ,sat = _
   ,ct = color_temp
   ,effect = None
-  ,xy = case color of ColorXY x y -> [x,y]
+  ,xy = fmap (\(ColorXY x y) -> [x,y]) color
   ,alert = Select
-  ,colorMode = case color_mode of
+  ,colorMode = (<$> color_mode) $ \case
       TemperatureMode -> CT
       XYMode -> XY
   ,mode = HomeAutomation
@@ -184,7 +171,7 @@ lightStateMqtt2Hue MQTTAPI.LightState {..} = HueAPI.LightState
   }
 
 lightMqtt2Hue :: MQTTAPI.LightConfig -> MQTTAPI.LightState -> HueAPI.Light
-lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productName,manufacturer,sw_version},..}) lightState
+lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productName,..},..}) lightState
   = Light {state = lightStateMqtt2Hue lightState 
           ,swUpdate = SwUpdate {state = NoUpdates
                                ,lastinstall = UTCTime (toEnum 0) (toEnum 0) -- FIXME
@@ -194,13 +181,13 @@ lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productName,manufactur
                                               then TemperatureLight
                                               else DimmableLight)
           ,name = name
-          ,modeLid = "" -- ???
+          ,modelId = model
           ,manufacturerName = manufacturer
           ,productName = productName
           ,capabilities = Capabilities
             {certified = False,
              control = if XYMode `elem` supported_color_modes then
-                     FullColor Other Nothing -- FIXME: Get gamut from manufacturer
+                     FullColor Other Nothing -- FIXME: Get gamut from manufacturer+modelid
                        else (if TemperatureMode `elem` supported_color_modes
                               then case (min_mireds,max_mireds) of
                                      (Just mmin, Just mmax) -> Ct (CtValues mmin mmax)
@@ -243,30 +230,43 @@ allConfig userId = do
 app1 :: Application
 app1 = serve (Proxy @HueApi) server1
 
+blankServerState :: ServerState
+blankServerState = ServerState mempty mempty mempty
 
-mqttapp :: IO ()
-mqttapp = do
-  let (Just uri) = parseURI "mqtt://192.168.1.15"
+data DeviceKind = KLight
+data ServerState = ServerState {lights :: Map Text MQTTAPI.LightConfig -- map from uniqueid to config
+                               ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
+                               ,lightIds :: Map Text Int -- map from uniqueid to simple id
+                               }
+
+mqttThread :: MVar ServerState -> IO ()
+mqttThread st = do
+  let (Just uri) = parseURI "mqtt://192.168.1.15" -- FIXME: take from server config
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback msgReceived} uri
-  -- let Just flt = mkFilter "#"
-  -- let Just flt = mkFilter "homeassistant/switch/+/switch/config"
-  let Just flt = mkFilter "homeassistant/light/+/light/config"
-  putStrLn $ "subscribing to: " <> show flt
-  print =<< subscribe mc [(flt, subOptions {_subQoS = QoS2})] []
+  print =<< subscribe mc
+                      [("homeassistant/light/+/light/config", subOptions {_subQoS = QoS1}),
+                       ("zigbee2mqtt/+", subOptions {_subQoS = QoS1})]
+                      []
   waitForClient mc   -- wait for the the client to disconnect
 
   where
-    msgReceived _ topic msg properties = do
-      let (m :: Maybe MQTTAPI.LightConfig) = decode msg
-      print m
+    msgReceived _ (unTopic -> topic) msg _properties = do
+      case (decode msg, decode msg) of
+        (Just l,_) | "homeassistant/light" `Text.isPrefixOf` topic -> do
+           let uid = unique_id l
+           Text.putStrLn $ ("Got light config: " <> uid)
+           modifyMVarMasked_ st $ \ServerState{..} -> return
+             ServerState{lights=Data.Map.insert uid l lights
+                         ,lightIds=if uid `member` lightIds
+                                   then lightIds
+                                   else insert uid (1+maximum (0:elems lightIds)) -- if empty, assign 1.
+                                       lightIds
+                         ,..}
+        (_,Just l) -> do
+          Text.putStrLn $ ("Got light state: " <> topic)
+          modifyMVarMasked_ st $ \ServerState{..} -> return ServerState{lightStates=Data.Map.insert topic l lightStates,..}
+        _ -> do Text.putStrLn ("Got unknown kind of message on topic " <> topic)
+                print msg
+      withMVar st (print . lightIds)
 
 
-
-  -- let (Just uri) = parseURI "mqtt://192.168.1.15"
-  -- client <- connectURI mqttConfig {_msgCB=SimpleCallback msgReceived} uri
-  -- let Just flt = mkFilter "/homeassistant/light/+/light/config"
-  -- putStrLn ("ready to subscribe to:" <> show flt)
-  -- print =<< subscribe client [(flt, subOptions {_subQoS = QoS2})] []
-  -- waitForClient client   -- wait for the the client to disconnect
-  -- where
-  --   msgReceived _ t m p = print (t,m,p)

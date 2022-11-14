@@ -13,41 +13,21 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module HueAPI where
 
 import Prelude ()
 import Prelude.Compat
-import Data.Char (toLower)
-import Control.Monad.Except
-import Control.Monad.Reader
 import MyAeson
 import Data.Aeson
-import Data.Aeson.TH
 import Data.Aeson.Types
-import Data.Attoparsec.ByteString
-import Data.ByteString (ByteString)
-import Data.List
-import Data.Maybe
-import Data.String.Conversions
-import Data.Time.Calendar
 import GHC.Generics
-import Lucid
-import Network.HTTP.Media ((//), (/:))
-import Network.Wai
-import Network.Wai.Handler.Warp
 import Servant
-import System.Directory
-import Text.Blaze
-import Text.Blaze.Html.Renderer.Utf8
-import Servant.Types.SourceT (source)
-import qualified Data.Aeson.Parser
-import qualified Text.Blaze.Html
 import Data.Map
 import Data.Time.Clock
 import Data.Time.LocalTime
+import Data.Text
 
 type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUser]
            :<|>  "api" :>                            "config" :> Get '[JSON] Config
@@ -58,9 +38,9 @@ type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUse
 
 data CreatedUser = CreatedUser {success :: UserName}
   deriving (Eq, Show, Generic)
-data UserName = UserName {username :: String}
+data UserName = UserName {username :: Text}
   deriving (Eq, Show, Generic)
-data CreateUser = CreateUser {devicetype :: String }  -- , generate_clientkey :: Bool
+data CreateUser = CreateUser {devicetype :: Text }  -- , generate_clientkey :: Bool
   deriving (Eq, Show, Generic)
 
 
@@ -99,28 +79,18 @@ instance ToJSON Updates where
 data Light = Light { state :: LightState
                    , swUpdate :: SwUpdate
                    , _type :: LightType
-                   , name :: String
-                   , modeLid :: String
-                   , manufacturerName :: String
-                   , productName :: String
+                   , name :: Text
+                   , modelId :: Text
+                   , manufacturerName :: Text
+                   , productName :: Text
                    , capabilities :: Capabilities
                    , config :: LightConfig
-                   , uniqueid :: String
-                   , swversion :: String}
+                   , uniqueid :: Text
+                   , swversion :: Text
+                   -- "swconfigid": "2435DF32",
+                   -- "productid": "Philips-LCL001-1-LedStripsv4"
+                   }
   deriving (Eq, Show)
-instance ToJSON Light where
-  toJSON (Light {..}) =
-        object ["state" .= state
-               ,"swUpdate" .= swUpdate 
-               ,"type" .= _type 
-               ,"name" .= name 
-               ,"modeLid" .= modeLid 
-               ,"manufacturerName" .= manufacturerName 
-               ,"productName" .= productName 
-               ,"capabilities" .= capabilities 
-               ,"config" .= config 
-               ,"uniqueid" .= uniqueid 
-               ,"swversion" .= swversion]
 
 instance ToJSON LightState
 instance ToJSON Effect
@@ -156,11 +126,11 @@ data LightState = LightState
   ,bri :: Int
   -- ,hue :: Int -- FIXME
   -- ,sat :: Int
-  ,ct :: Int
+  ,ct :: Maybe Int
   ,effect :: Effect
-  ,xy :: [Float]
+  ,xy :: Maybe [Float]
   ,alert :: Alert
-  ,colorMode :: ColorMode
+  ,colorMode :: Maybe ColorMode
   ,mode :: LightMode
   ,reachable :: Bool}
   deriving (Eq, Show, Generic)
@@ -335,6 +305,7 @@ data Everything = Everything
 instance ToJSON GroupType
 instance ToJSON GroupState
 
+$(myDeriveToJSON ''Light)
 $(myDeriveToJSON ''Group)
 $(myDeriveToJSON ''Config)
 instance ToJSON Everything

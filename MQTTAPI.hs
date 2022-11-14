@@ -21,6 +21,7 @@ import qualified Data.Aeson.Parser
 import Data.Aeson
 import Data.Aeson.Types
 import Data.ByteString
+import Data.Text
 
 data ColorXY = ColorXY {x,y :: Float} deriving (Generic, Show, Eq)
 instance FromJSON ColorXY
@@ -47,9 +48,9 @@ instance FromJSON UpdateState
 instance ToJSON UpdateState
 data LightState = LightState
   { brightness :: Int,
-    color :: ColorXY,
-    color_mode :: ColorMode,
-    color_temp:: Int,
+    color :: Maybe ColorXY,
+    color_mode :: Maybe ColorMode,
+    color_temp:: Maybe Int,
     linkquality:: Int,
     state:: OnOff,
     update:: UpdateState,
@@ -70,11 +71,11 @@ instance ToJSON Status where
     Busy -> "busy"
     
 data Device = Device {
-            identifiers :: [String],
-            manufacturer :: String,
-            model :: String,
-            name :: String,
-            sw_version :: String
+            identifiers :: [Text],
+            manufacturer :: Text,
+            model :: Text,
+            name :: Text,
+            sw_version :: Text
           } deriving (Generic, Show)
 instance FromJSON Device
             
@@ -82,18 +83,18 @@ data LightConfig = LightConfig {
           brightness :: Bool,
           brightness_scale :: Maybe Int,
           color_mode :: Bool,
-          command_topic :: String,
+          command_topic :: Text,
           device :: Device,
           effect :: Bool,
-          effect_list :: [String],
-          json_attributes_topic :: String,
+          effect_list :: [Text],
+          json_attributes_topic :: Text,
           max_mireds :: Maybe Int,
           min_mireds :: Maybe Int,
-          name :: String,
-          schema :: String,
-          state_topic :: String,
+          name :: Text,
+          -- schema :: Text, -- always json
+          state_topic :: Text,
           supported_color_modes :: [ColorMode],
-          unique_id :: String
+          unique_id :: Text
         } deriving (Generic, Show)
 instance FromJSON LightConfig
 
