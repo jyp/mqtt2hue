@@ -46,7 +46,8 @@ import Types
 
 
 server1 :: Server HueApi
-server1 =    bridgePublicConfig
+server1 =    createUser
+        :<|> bridgePublicConfig
         :<|> bridgeConfig
         :<|> configuredLights
 
@@ -59,6 +60,11 @@ serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
 
 bridgeConfig :: String -> Handler Config
 bridgeConfig _userId = bridgePublicConfig
+
+createUser :: CreateUser -> Handler CreatedUser
+createUser CreateUser {..} = do
+  liftIO (putStrLn ("user-creation requested for " <> devicetype))
+  return $ CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"
 
 bridgePublicConfig :: Handler Config
 bridgePublicConfig = do

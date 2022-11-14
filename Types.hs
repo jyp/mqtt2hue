@@ -45,9 +45,23 @@ import Data.IntMap
 import Data.Time.Clock
 import Data.Time.LocalTime
 
-type HueApi =    "api" :>                            "config" :> Get '[JSON] Config
+type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] CreatedUser
+           :<|>  "api" :>                            "config" :> Get '[JSON] Config
            :<|>  "api" :> Capture "userid" String :> "config" :> Get '[JSON] Config
            :<|>  "api" :> Capture "userid" String :> "lights" :> Get '[JSON] (IntMap Light)
+
+data CreatedUser = CreatedUser {success :: UserName}
+  deriving (Eq, Show, Generic)
+data UserName = UserName {username :: String}
+  deriving (Eq, Show, Generic)
+data CreateUser = CreateUser {devicetype :: String }  -- , generate_clientkey :: Bool
+  deriving (Eq, Show, Generic)
+
+
+instance FromJSON CreateUser
+instance ToJSON CreatedUser
+instance ToJSON UserName
+
 
 
 data SwUpdate = SwUpdate {state :: Updates, lastinstall :: String}
