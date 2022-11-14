@@ -43,13 +43,16 @@ import Data.IntMap
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Types
-
+import HueAPI
 
 server1 :: Server HueApi
 server1 =    createUser
         :<|> bridgePublicConfig
+        :<|> allConfig
         :<|> bridgeConfig
         :<|> configuredLights
+        :<|> configuredGroups
+        
 
 serverConfig :: ServerConfig
 serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
@@ -61,18 +64,18 @@ serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
 bridgeConfig :: String -> Handler Config
 bridgeConfig _userId = bridgePublicConfig
 
-createUser :: CreateUser -> Handler CreatedUser
+createUser :: CreateUser -> Handler [CreatedUser]
 createUser CreateUser {..} = do
   liftIO (putStrLn ("user-creation requested for " <> devicetype))
-  return $ CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"
+  return [CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"]
 
 bridgePublicConfig :: Handler Config
 bridgePublicConfig = do
  now <- liftIO getCurrentTime
  return $ Config
-  {name = "Philips hue"
+  {name = "MQTT2hue" -- "Philips Hue"
   ,zigbeechannel = 15
-  ,bridgeid = "ECB5FAFFFE259802"
+  ,bridgeid = "ECB5FAFFFE259802" -- ??
   ,dhcp = True
   ,proxyaddress = "none"
   ,proxyport = 0
@@ -116,7 +119,7 @@ bridgePublicConfig = do
                                        ,swupdate = Disconnected
                                        }
   ,factorynew = False
-  ,replacesbridgeid = Types.Null
+  ,replacesbridgeid = HueAPI.Null
   ,backup = Backup {status = Idle
                    ,errorcode = 0
                    }
@@ -145,6 +148,21 @@ configuredLights _ = return $ mempty
   --                        startup = Startup {}}
   --                    ,uniqueid = _
   --                    ,swversion = _})]
+
+configuredGroups :: String -> Handler (IntMap Group)
+configuredGroups _ = return $ mempty
+
+allConfig :: String -> Handler Everything
+allConfig userId = do
+  lights <- configuredLights userId
+  groups <- configuredGroups userId
+  config <- bridgeConfig userId
+  let schedules = mempty
+  let scenes = mempty
+  let rules = mempty
+  let sensors = mempty
+  let resoucelinks = mempty
+  return Everything {..}
 
 app1 :: Application
 app1 = serve (Proxy @HueApi) server1

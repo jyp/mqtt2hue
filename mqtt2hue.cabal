@@ -41,3 +41,4 @@ executable mqtt2hue
   other-modules:
    Server
    Types
+   HueAPI
