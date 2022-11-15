@@ -59,6 +59,14 @@ data LightState = LightState
 instance FromJSON LightState
 instance ToJSON LightState
 
+data Action = Action
+  { brightness :: Maybe Int,
+    color :: Maybe ColorXY,
+    state :: Maybe OnOff,
+    color_temp :: Maybe Int
+  } deriving Generic
+instance ToJSON Action
+
 data Status = Idle | Busy
   deriving (Eq, Show, Generic)
 instance FromJSON Status where

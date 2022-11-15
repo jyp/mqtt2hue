@@ -61,7 +61,7 @@ import HueAPIV2
 import MQTTAPI
 
 
-type HueHandler = ReaderT (MVar ServerState) Handler
+type HueHandler = ReaderT (MVar AppState) Handler
 
 hueServerV1 :: ServerT HueApi HueHandler
 hueServerV1 =  createUser
@@ -71,6 +71,7 @@ hueServerV1 =  createUser
         :<|> configuredLights
         :<|> configuredGroups
         :<|> configuredGroup
+        :<|> groupAction
 
 hueServerV2 :: ServerT HueAPIV2.HueApiV2 HueHandler
 hueServerV2 = return (S.fromStepT s)
@@ -162,7 +163,7 @@ bridgePublicConfig = do
   , ..
   } where ServerConfig {..} = serverConfig
 
-askingState :: ToJSON a => (ServerState -> a) -> HueHandler a
+askingState :: ToJSON a => (AppState -> a) -> HueHandler a
 askingState f = do
   st <- liftIO . readMVar =<< ask
   let x = f st
@@ -175,9 +176,13 @@ configuredLights _ = askingState allHueLights
 configuredGroups :: String -> HueHandler (Map Int Group)
 configuredGroups _ = askingState allHueGroups
 
-configuredGroup :: String -> Int ->HueHandler Group
+configuredGroup :: String -> Int -> HueHandler Group
 configuredGroup _ 0 = askingState group0
 configuredGroup _ _ = throwError err404
+
+groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
+groupAction _userId groupId action = error "groupAction: todo"
+
 
 allConfig :: String -> HueHandler Everything
 allConfig userId = do
@@ -194,16 +199,17 @@ allConfig userId = do
 hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
 hueApi = Proxy
 
-hueApp :: MVar ServerState -> Application
+hueApp :: MVar AppState -> Application
 hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
   where funToHandler :: HueHandler a -> Handler a
         funToHandler f = runReaderT f st
 
 
-mqttThread :: MVar ServerState -> IO ()
-mqttThread st = mdo
+mqttThread :: MVar MQTTClient -> MVar AppState -> IO ()
+mqttThread mv st = mdo
   let (Just uri) = parseURI "mqtt://192.168.1.15" -- FIXME: take from server config
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
+  putMVar mv mc
   print =<< subscribe mc
                       [("homeassistant/light/+/light/config", subOptions {_subQoS = QoS1}),
                        ("zigbee2mqtt/+", subOptions {_subQoS = QoS1})]
@@ -226,3 +232,4 @@ mqttThread st = mdo
           modifyMVarMasked_ st (return . updateLightState topic l)
         _ -> do Text.putStrLn "Unknown kind of message"
       withMVar st (print . lightIds)
+

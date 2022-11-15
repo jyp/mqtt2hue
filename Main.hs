@@ -32,11 +32,8 @@ import Text.Blaze.Html.Renderer.Utf8
 import Servant.Types.SourceT (source)
 import qualified Data.Aeson.Parser
 import qualified Text.Blaze.Html
-import Data.IntMap
 import Data.Time.Clock
 import Data.Time.LocalTime
-import Types
-import Network.Wai.Handler.WarpTLS
 import           Network.Wai.Logger       (withStdoutLogger)
 import           Control.Concurrent                  (forkIO)
 import           Network.HTTP.Types                  (status200)
@@ -44,22 +41,16 @@ import           Network.Wai                         (Application, responseLBS)
 import           Network.Wai.Handler.Warp            (defaultSettings, run,
                                                       setPort)
 import           Network.Wai.Handler.WarpTLS         (runTLS, tlsSettings)
-import           Network.Wai.Middleware.EnforceHTTPS (EnforceHTTPSConfig (..))
 
-import qualified Network.Wai.Middleware.EnforceHTTPS as EnforceHTTPS
 import Control.Concurrent.MVar
-
-
--- httpsConf :: EnforceHTTPSConfig
--- httpsConf = EnforceHTTPS.defaultConfig { httpsPort = 443 }
--- app = EnforceHTTPS.withConfig httpsConf app0
 
 import Logic
 
 main :: IO ()
 main = do
-  st <- newMVar blankServerState
-  _ <- forkIO (mqttThread st)
+  st <- newMVar blankAppState
+  mv <- newEmptyMVar
+  _ <- forkIO (mqttThread mv st)
   let app = hueApp st
   withStdoutLogger $ \aplogger -> do
     let tlsOpts = tlsSettings "certificate/cert.pem" "certificate/privkey.pem"
