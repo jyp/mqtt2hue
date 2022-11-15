@@ -57,7 +57,7 @@ import Servant
 import Logic
 import Types
 import HueAPI
-import qualified HueAPIV2
+import HueAPIV2
 import MQTTAPI
 
 
@@ -74,7 +74,15 @@ hueServerV1 =  createUser
 
 hueServerV2 :: ServerT HueAPIV2.HueApiV2 HueHandler
 hueServerV2 = return (S.fromStepT s)
-  where s = S.Effect (threadDelay 1000000 >> return s)
+       where s = S.Effect (threadDelay 1000000 >> return s)
+  -- where s = S.Yield (HueAPIV2.Event {resource = LightRes
+  --                                   ,idv1 = _
+  --                                   ,idv2 = _
+  --                                   ,creationTime = _
+  --                                   ,dimming = _
+  --                                   ,color = _
+  --                                   ,color_temperature = _
+  --                                   }) _ 
 
 hueServer :: ServerT (HueApi :<|> HueAPIV2.HueApiV2) HueHandler
 hueServer = hueServerV1 :<|> hueServerV2
@@ -110,7 +118,8 @@ bridgePublicConfig = do
   ,modelid = "BSB001"
   ,datastoreversion = "131"
   ,swversion = "1953188020"
-  ,apiversion = "1.53.0"
+  -- ,apiversion = "1.53.0"
+  ,apiversion = "1.45.0" -- last version not to support event stream
   ,swupdate = CfgUpdate1 {updatestate = 0
                          ,checkforupdate = False
                          ,devicetypes = DeviceTypes {bridge = False

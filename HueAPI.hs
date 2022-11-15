@@ -122,8 +122,8 @@ instance ToJSON LightType where
 data LightState = LightState
   {on :: Bool
   ,bri :: Int
-  -- ,hue :: Int -- FIXME
-  -- ,sat :: Int
+  -- ,hue :: Maybe Int -- FIXME
+  -- ,sat :: Maybe Int
   ,ct :: Maybe Int
   ,effect :: Effect
   ,xy :: Maybe [Float]
@@ -176,7 +176,7 @@ data Group = Group
   , state :: GroupState
   , recycle ::  Bool
   , _class :: Maybe String
-  , action :: Maybe LightState
+  , action :: LightState
   -- , precence :: Presence
   -- , lightlevel :: LightLevel
   }

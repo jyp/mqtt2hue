@@ -115,45 +115,27 @@ allHueLights st@ServerState{..} = Map.fromList
 allHueGroups :: ServerState -> Map Int Group
 allHueGroups st = Map.fromList [(1,group1 st)]
 
+mkGroupWithLights :: ServerState -> GroupType -> String -> Map Text MQTTAPI.LightConfig -> Group
+mkGroupWithLights st@ServerState{..} _type name groupLights
+  = Group {lights = [show i
+                    | (uid,_) <- toList groupLights
+                    , let Just i = Data.Map.lookup uid lightIds   ]
+          ,sensors = mempty
+          ,state = GroupState {all_on = and ons
+                              ,any_on = or ons
+                              }
+          ,recycle = False
+          ,_class = Nothing
+          ,action = lightStateMqtt2Hue (head (groupLightStates++[blankLightState]))
+          ,..}
+  where ons = [state == ON | MQTTAPI.LightState{state} <- groupLightStates  ]
+        groupLightStates = getLightState st . snd <$> toList groupLights
+  
 group0 :: ServerState -> Group
-group0 st@ServerState{..} = Group
-  {name = "Group 0"
-  ,lights = [show i
-            | (uid,_) <- toList lights
-            , let Just i = Data.Map.lookup uid lightIds   ]
-  ,sensors = mempty
-  ,_type = LightGroup
-  ,state = GroupState {all_on = and ons
-                      ,any_on = or ons
-                      }
-  ,recycle = False
-  ,_class = Nothing
-  ,action = Nothing
-  }
-  where ons = [state == ON
-              | (_uid,cfg) <- toList lights
-              , let MQTTAPI.LightState{state} = getLightState st cfg
-              ]
+group0 st@ServerState{lights} = mkGroupWithLights st LightGroup "Group 0" lights
 
 group1 :: ServerState -> Group
-group1 st@ServerState{..} = Group
-  {name = "The Void"
-  ,lights = [show i
-            | (uid,_) <- toList lights
-            , let Just i = Data.Map.lookup uid lightIds   ]
-  ,sensors = mempty
-  ,_type = Room
-  ,state = GroupState {all_on = and ons
-                      ,any_on = or ons
-                      }
-  ,recycle = False
-  ,_class = Nothing
-  ,action = Nothing
-  }
-  where ons = [state == ON
-              | (_uid,cfg) <- toList lights
-              , let MQTTAPI.LightState{state} = getLightState st cfg
-              ]
+group1 st@ServerState{lights} = mkGroupWithLights st Room "The Void" lights
 
 updateLightConfig :: MQTTAPI.LightConfig -> ServerState -> ServerState
 updateLightConfig l ServerState {..} =
