@@ -43,8 +43,10 @@ executable mqtt2hue
   main-is: Main.hs
   ghc-options: -threaded -rtsopts
   other-modules:
+   Logic
    Server
    Types
    HueAPI
+   HueAPIV2
    MQTTAPI
    MyAeson

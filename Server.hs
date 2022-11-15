@@ -3,11 +3,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE EmptyDataDeriving #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -21,7 +19,8 @@ import Control.Monad.Reader
 import Data.Aeson
 -- import Data.Aeson.Types
 -- import Data.Attoparsec.ByteString
--- import Data.ByteString (ByteString)
+import Data.ByteString.Lazy.Char8
+import Data.Aeson.Text
 -- import Data.List
 import Data.Map
 import Data.Maybe
@@ -45,10 +44,12 @@ import Network.Wai
 -- import qualified Data.Aeson.Parser
 -- import qualified Text.Blaze.Html
 -- import Network.Wai.Handler.Warp
-import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.Lazy.IO
 import qualified Data.Text.IO as Text
 import Control.Concurrent.MVar
+import Control.Concurrent
+import qualified Servant.Types.SourceT as S
 
 import Prelude ()
 import Prelude.Compat
@@ -56,23 +57,33 @@ import Servant
 import Logic
 import Types
 import HueAPI
+import qualified HueAPIV2
 import MQTTAPI
+
 
 type HueHandler = ReaderT (MVar ServerState) Handler
 
-hueServer :: ServerT HueApi HueHandler
-hueServer =  createUser
+hueServerV1 :: ServerT HueApi HueHandler
+hueServerV1 =  createUser
         :<|> bridgePublicConfig
         :<|> allConfig
         :<|> bridgeConfig
         :<|> configuredLights
         :<|> configuredGroups
+        :<|> configuredGroup
+
+hueServerV2 :: ServerT HueAPIV2.HueApiV2 HueHandler
+hueServerV2 = return (S.fromStepT s)
+  where s = S.Effect (threadDelay 1000000 >> return s)
+
+hueServer :: ServerT (HueApi :<|> HueAPIV2.HueApiV2) HueHandler
+hueServer = hueServerV1 :<|> hueServerV2
 
 serverConfig :: ServerConfig
 serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
-                            ,ipaddress = "192.168.1.50"
-                            ,netmask = "255.255.255.0"
-                            ,gateway = "192.168.1.1"
+                            , ipaddress = "192.168.1.50"
+                            , netmask = "255.255.255.0"
+                            , gateway = "192.168.1.1"
                             }
 
 bridgeConfig :: String -> HueHandler Config
@@ -81,7 +92,7 @@ bridgeConfig _userId = bridgePublicConfig
 createUser :: CreateUser -> HueHandler [CreatedUser]
 createUser CreateUser {..} = do
   liftIO (Text.putStrLn ("user-creation requested for " <> devicetype))
-  return [CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"]
+  return [CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"] -- FIXME
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
@@ -96,7 +107,7 @@ bridgePublicConfig = do
   ,_UTC = now
   ,localtime = now
   ,timezone = "Europe/Stockholm"
-  ,modelid = "BSB002"
+  ,modelid = "BSB001"
   ,datastoreversion = "131"
   ,swversion = "1953188020"
   ,apiversion = "1.53.0"
@@ -142,11 +153,22 @@ bridgePublicConfig = do
   , ..
   } where ServerConfig {..} = serverConfig
 
+askingState :: ToJSON a => (ServerState -> a) -> HueHandler a
+askingState f = do
+  st <- liftIO . readMVar =<< ask
+  let x = f st
+  liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
+  return x
+
 configuredLights :: String -> HueHandler (Map Int Light)
-configuredLights _ = return $ mempty
+configuredLights _ = askingState allHueLights
 
 configuredGroups :: String -> HueHandler (Map Int Group)
-configuredGroups _ = return $ mempty
+configuredGroups _ = askingState allHueGroups
+
+configuredGroup :: String -> Int ->HueHandler Group
+configuredGroup _ 0 = askingState group0
+configuredGroup _ _ = throwError err404
 
 allConfig :: String -> HueHandler Everything
 allConfig userId = do
@@ -160,8 +182,8 @@ allConfig userId = do
   let resoucelinks = mempty
   return Everything {..}
 
-hueApi :: Proxy HueApi
-hueApi = Proxy @HueApi
+hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
+hueApi = Proxy
 
 hueApp :: MVar ServerState -> Application
 hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
@@ -170,27 +192,28 @@ hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
 
 
 mqttThread :: MVar ServerState -> IO ()
-mqttThread st = do
+mqttThread st = mdo
   let (Just uri) = parseURI "mqtt://192.168.1.15" -- FIXME: take from server config
-  mc <- connectURI mqttConfig{_msgCB=SimpleCallback msgReceived} uri
+  mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   print =<< subscribe mc
                       [("homeassistant/light/+/light/config", subOptions {_subQoS = QoS1}),
                        ("zigbee2mqtt/+", subOptions {_subQoS = QoS1})]
+                      -- TODO: read zigbee2mqtt/bridge/devices. Useful to get model_id, network_address, ieee_address
                       []
   waitForClient mc   -- wait for the the client to disconnect
 
   where
-    msgReceived _ (unTopic -> topic) msg _properties = do
+    msgReceived mc _ (unTopic -> topic) msg _properties = do
+      print (topic <> ":")
+      Data.ByteString.Lazy.Char8.putStrLn msg
       case (decode msg, decode msg) of
         (Just l,_) | "homeassistant/light" `Text.isPrefixOf` topic -> do
-           let uid = unique_id l
-           Text.putStrLn $ ("Got light config: " <> uid)
+           Text.putStrLn "Got light config"
            modifyMVarMasked_ st (return . updateLightConfig l)
+           let Just t =  mkTopic (state_topic l <> "/get") 
+           publish mc t "{\"state\": \"\"}" False -- request light state now
         (_,Just l) -> do
-          Text.putStrLn $ ("Got light state: " <> topic)
+          Text.putStrLn "Got light state"
           modifyMVarMasked_ st (return . updateLightState topic l)
-        _ -> do Text.putStrLn ("Got unknown kind of message on topic " <> topic)
-                print msg
+        _ -> do Text.putStrLn "Unknown kind of message"
       withMVar st (print . lightIds)
-
-

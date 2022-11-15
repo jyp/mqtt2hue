@@ -49,21 +49,21 @@ import           Network.Wai.Middleware.EnforceHTTPS (EnforceHTTPSConfig (..))
 import qualified Network.Wai.Middleware.EnforceHTTPS as EnforceHTTPS
 import Control.Concurrent.MVar
 
-app = EnforceHTTPS.withConfig httpsConf app1
 
-httpsConf :: EnforceHTTPSConfig
-httpsConf = EnforceHTTPS.defaultConfig { httpsPort = 443 }
+-- httpsConf :: EnforceHTTPSConfig
+-- httpsConf = EnforceHTTPS.defaultConfig { httpsPort = 443 }
+-- app = EnforceHTTPS.withConfig httpsConf app0
 
-
+import Logic
 
 main :: IO ()
 main = do
   st <- newMVar blankServerState
-  mqttThread st
-
--- main :: IO ()
--- main = withStdoutLogger $ \aplogger -> do
---   let tlsOpts = tlsSettings "certificate/cert.pem" "certificate/privkey.pem"
---       warpOpts = setLogger aplogger $ defaultSettings
---   _ <- forkIO $ runSettings (setPort 80 warpOpts) app1
---   runTLS tlsOpts (setPort 443 $ warpOpts) app1
+  _ <- forkIO (mqttThread st)
+  let app = hueApp st
+  withStdoutLogger $ \aplogger -> do
+    let tlsOpts = tlsSettings "certificate/cert.pem" "certificate/privkey.pem"
+        warpOpts = setLogger aplogger $ defaultSettings
+    _ <- forkIO $ runSettings (setPort 80 warpOpts) app
+    runTLS tlsOpts (setPort 443 $ warpOpts) app
+  return ()

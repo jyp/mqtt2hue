@@ -1,30 +1,23 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE EmptyDataDeriving #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module Logic where
 
 import MQTTAPI
 import HueAPI
+import qualified Data.Map as Map
 import Data.Map
 import Data.Text (Text)
-import qualified Data.Text as Text
 import Data.Time.Clock
-import Data.Time.LocalTime
-
 
 blankServerState :: ServerState
 blankServerState = ServerState mempty mempty mempty
@@ -35,26 +28,26 @@ data ServerState = ServerState {lights :: Map Text MQTTAPI.LightConfig -- map fr
                                }
 
 lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
-lightStateMqtt2Hue MQTTAPI.LightState {..} = HueAPI.LightState
-  {on = state == ON
-  ,bri = brightness
-  -- ,hue = _ -- FIXME
-  -- ,sat = _
-  ,ct = color_temp
-  ,effect = None
-  ,xy = fmap (\(ColorXY x y) -> [x,y]) color
-  ,alert = Select
-  ,colorMode = (<$> color_mode) $ \case
-      TemperatureMode -> CT
-      XYMode -> XY
-  ,mode = HomeAutomation
-  ,reachable = True -- FIXME -- linkquality ?
-  }
+lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,color}
+  = HueAPI.LightState {on = state == ON
+                      ,bri = brightness
+                      -- ,hue = _ -- FIXME
+                      -- ,sat = _
+                      ,ct = color_temp
+                      ,effect = None
+                      ,xy = fmap (\(ColorXY x y) -> [x,y]) color
+                      ,alert = Select
+                      ,colorMode = (<$> color_mode) $ \case
+                          TemperatureMode -> CT
+                          XYMode -> XY
+                      ,mode = HomeAutomation
+                      ,reachable = True -- FIXME -- linkquality ?
+                      }
 
-lightMqtt2Hue :: MQTTAPI.LightConfig -> MQTTAPI.LightState -> HueAPI.Light
-lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productName,..},..}) lightState
-  = Light {state = lightStateMqtt2Hue lightState 
-          ,swUpdate = SwUpdate {state = NoUpdates
+lightMqtt2Hue :: MQTTAPI.LightConfig -> HueAPI.LightState -> HueAPI.Light
+lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productname,..},..}) lightState
+  = Light {state = lightState 
+          ,swupdate = SwUpdate {state = NoUpdates
                                ,lastinstall = UTCTime (toEnum 0) (toEnum 0) -- FIXME
                                }
           ,_type = if XYMode `elem` supported_color_modes then
@@ -62,9 +55,9 @@ lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productName,..},..}) l
                                               then TemperatureLight
                                               else DimmableLight)
           ,name = name
-          ,modelId = model
-          ,manufacturerName = manufacturer
-          ,productName = productName
+          ,modelid = model -- FIXME
+          ,manufacturername = manufacturer
+          ,productname = productname
           ,capabilities = Capabilities
             {certified = False,
              control = if XYMode `elem` supported_color_modes then
@@ -84,19 +77,83 @@ lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productName,..},..}) l
           }
 
 
-blankLightState :: HueAPI.LightState
-blankLightState = HueAPI.LightState { on = True
-                                    , bri = 23
-                                    -- , hue = 44
-                                    -- , sat = 15
-                                    , ct = Nothing
-                                    , effect = None
-                                    , xy = Nothing
-                                    , alert = Select
-                                    , colorMode = Nothing
-                                    , mode = HomeAutomation
-                                    , reachable = True}
+-- blankLightState :: HueAPI.LightState
+-- blankLightState = HueAPI.LightState { on = True
+--                                     , bri = 23
+--                                     -- , hue = 44
+--                                     -- , sat = 15
+--                                     , ct = Nothing
+--                                     , effect = None
+--                                     , xy = Nothing
+--                                     , alert = Select
+--                                     , colorMode = Nothing
+--                                     , mode = HomeAutomation
+--                                     , reachable = True}
 
+blankLightState :: MQTTAPI.LightState
+blankLightState = MQTTAPI.LightState
+  {brightness = 0
+  ,color = Nothing
+  ,color_mode = Nothing
+  ,color_temp = Nothing
+  ,linkquality = 0
+  ,state = OFF
+  ,update = UpdateState {state = MQTTAPI.Idle}
+  ,update_available = False
+  }
+
+getLightState :: ServerState -> MQTTAPI.LightConfig -> MQTTAPI.LightState
+getLightState ServerState{..} cfg =  Data.Map.findWithDefault blankLightState (state_topic cfg) lightStates
+
+allHueLights :: ServerState -> Map Int Light
+allHueLights st@ServerState{..} = Map.fromList
+  [(i,lightMqtt2Hue cfg (lightStateMqtt2Hue (getLightState st cfg)))
+  | (uid,cfg) <- toList lights
+  , let Just i = Data.Map.lookup uid lightIds
+  ]
+
+allHueGroups :: ServerState -> Map Int Group
+allHueGroups st = Map.fromList [(1,group1 st)]
+
+group0 :: ServerState -> Group
+group0 st@ServerState{..} = Group
+  {name = "Group 0"
+  ,lights = [show i
+            | (uid,_) <- toList lights
+            , let Just i = Data.Map.lookup uid lightIds   ]
+  ,sensors = mempty
+  ,_type = LightGroup
+  ,state = GroupState {all_on = and ons
+                      ,any_on = or ons
+                      }
+  ,recycle = False
+  ,_class = Nothing
+  ,action = Nothing
+  }
+  where ons = [state == ON
+              | (_uid,cfg) <- toList lights
+              , let MQTTAPI.LightState{state} = getLightState st cfg
+              ]
+
+group1 :: ServerState -> Group
+group1 st@ServerState{..} = Group
+  {name = "The Void"
+  ,lights = [show i
+            | (uid,_) <- toList lights
+            , let Just i = Data.Map.lookup uid lightIds   ]
+  ,sensors = mempty
+  ,_type = Room
+  ,state = GroupState {all_on = and ons
+                      ,any_on = or ons
+                      }
+  ,recycle = False
+  ,_class = Nothing
+  ,action = Nothing
+  }
+  where ons = [state == ON
+              | (_uid,cfg) <- toList lights
+              , let MQTTAPI.LightState{state} = getLightState st cfg
+              ]
 
 updateLightConfig :: MQTTAPI.LightConfig -> ServerState -> ServerState
 updateLightConfig l ServerState {..} =
@@ -107,3 +164,4 @@ updateLightConfig l ServerState {..} =
 
 updateLightState :: Text -> MQTTAPI.LightState -> ServerState -> ServerState
 updateLightState topic l ServerState {..} = ServerState {lightStates = Data.Map.insert topic l lightStates, ..}
+

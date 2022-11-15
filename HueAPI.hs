@@ -35,6 +35,7 @@ type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUse
            :<|>  "api" :> Capture "userid" String :> "config" :> Get '[JSON] Config
            :<|>  "api" :> Capture "userid" String :> "lights" :> Get '[JSON] (Map Int Light)
            :<|>  "api" :> Capture "userid" String :> "groups" :> Get '[JSON] (Map Int Group)
+           :<|>  "api" :> Capture "userid" String :> "groups" :> Capture "groupid" Int :> Get '[JSON] Group
 
 data CreatedUser = CreatedUser {success :: UserName}
   deriving (Eq, Show, Generic)
@@ -77,12 +78,12 @@ instance ToJSON Updates where
     NoUpdates -> "noupdates"
 
 data Light = Light { state :: LightState
-                   , swUpdate :: SwUpdate
+                   , swupdate :: SwUpdate
                    , _type :: LightType
                    , name :: Text
-                   , modelId :: Text
-                   , manufacturerName :: Text
-                   , productName :: Text
+                   , modelid :: Text
+                   , manufacturername :: Text
+                   , productname :: Text
                    , capabilities :: Capabilities
                    , config :: LightConfig
                    , uniqueid :: Text
@@ -92,7 +93,6 @@ data Light = Light { state :: LightState
                    }
   deriving (Eq, Show)
 
-instance ToJSON LightState
 instance ToJSON Effect
 instance ToJSON Alert
 instance ToJSON ColorMode where
@@ -102,9 +102,7 @@ instance ToJSON ColorMode where
 instance ToJSON LightMode where
   toJSON = \case
     HomeAutomation -> "homeautomation"
-instance ToJSON Capabilities
 instance ToJSON Streaming
-instance ToJSON Control
 instance ToJSON Ct
 instance ToJSON ColorGamutType where
   toJSON = \case
@@ -177,8 +175,8 @@ data Group = Group
   , _type :: GroupType
   , state :: GroupState
   , recycle ::  Bool
-  , _class :: String
-  , action :: LightState
+  , _class :: Maybe String
+  , action :: Maybe LightState
   -- , precence :: Presence
   -- , lightlevel :: LightLevel
   }
@@ -302,9 +300,13 @@ data Everything = Everything
   ,resoucelinks :: Map Int Dummy
   }
   deriving (Eq, Show, Generic)
+
+
 instance ToJSON GroupType
 instance ToJSON GroupState
-
+$(myDeriveToJSON ''Control)
+instance ToJSON Capabilities
+$(myDeriveToJSON ''LightState)
 $(myDeriveToJSON ''Light)
 $(myDeriveToJSON ''Group)
 $(myDeriveToJSON ''Config)

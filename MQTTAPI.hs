@@ -52,7 +52,7 @@ data LightState = LightState
     color_mode :: Maybe ColorMode,
     color_temp:: Maybe Int,
     linkquality:: Int,
-    state:: OnOff,
+    state :: OnOff,
     update:: UpdateState,
     update_available:: Bool
   } deriving Generic
