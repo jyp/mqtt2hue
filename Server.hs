@@ -17,7 +17,7 @@
 module Server where
 
 import Control.Monad.Except
--- import Control.Monad.Reader
+import Control.Monad.Reader
 import Data.Aeson
 -- import Data.Aeson.Types
 -- import Data.Attoparsec.ByteString
@@ -58,8 +58,10 @@ import Types
 import HueAPI
 import MQTTAPI
 
-server1 :: Server HueApi
-server1 =    createUser
+type HueHandler = ReaderT (MVar ServerState) Handler
+
+hueServer :: ServerT HueApi HueHandler
+hueServer =  createUser
         :<|> bridgePublicConfig
         :<|> allConfig
         :<|> bridgeConfig
@@ -73,15 +75,15 @@ serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
                             ,gateway = "192.168.1.1"
                             }
 
-bridgeConfig :: String -> Handler Config
+bridgeConfig :: String -> HueHandler Config
 bridgeConfig _userId = bridgePublicConfig
 
-createUser :: CreateUser -> Handler [CreatedUser]
+createUser :: CreateUser -> HueHandler [CreatedUser]
 createUser CreateUser {..} = do
   liftIO (Text.putStrLn ("user-creation requested for " <> devicetype))
   return [CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"]
 
-bridgePublicConfig :: Handler Config
+bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
  now <- liftIO getCurrentTime
  return $ Config
@@ -207,15 +209,15 @@ lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productName,..},..}) l
 -- "{\"1\":{\"capabilities\":{\"certified\":false,\"control\":{\"ct\":{\"max\":450,\"min\":0},\"tag\":\"Ct\"}},\"config\":{\"archetype\":\"sultanbulb\",\"direction\":\"omnidirectional\",\"function\":\"functional\",\"startup\":{\"configured\":true,\"mode\":\"safety\"}},\"manufacturerName\":\"Signify\",\"modeLid\":\"LTW010\",\"name\":\"Hue ambiance lamp in my office\",\"productName\":\"Hue ambiance lamp\",\"state\":{\"alert\":[],\"bri\":23,\"colorMode\":\"ct\",\"ct\":15,\"effect\":[],\"hue\":44,\"mode\":\"homeautomation\",\"on\":true,\"reachable\":true,\"sat\":15,\"xy\":[12,34]},\"swUpdate\":{\"lastinstall\":\"1858-11-17T00:00:00Z\",\"state\":\"noupdates\"},\"swversion\":\"test\",\"type\":\"Color temperature light\",\"uniqueid\":\"test\"}}"
 
 
-configuredLights :: String -> Handler (Map Int Light)
+configuredLights :: String -> HueHandler (Map Int Light)
 configuredLights _ = return $ mempty
 
 
 
-configuredGroups :: String -> Handler (Map Int Group)
+configuredGroups :: String -> HueHandler (Map Int Group)
 configuredGroups _ = return $ mempty
 
-allConfig :: String -> Handler Everything
+allConfig :: String -> HueHandler Everything
 allConfig userId = do
   lights <- configuredLights userId
   groups <- configuredGroups userId
@@ -227,8 +229,14 @@ allConfig userId = do
   let resoucelinks = mempty
   return Everything {..}
 
-app1 :: Application
-app1 = serve (Proxy @HueApi) server1
+hueApi :: Proxy HueApi
+hueApi = Proxy @HueApi
+
+hueApp :: MVar ServerState -> Application
+hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
+  where funToHandler :: HueHandler a -> Handler a
+        funToHandler f = runReaderT f st
+
 
 blankServerState :: ServerState
 blankServerState = ServerState mempty mempty mempty
