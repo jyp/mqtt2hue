@@ -23,10 +23,23 @@ import Data.Time.Clock
 blankAppState :: AppState 
 blankAppState = AppState mempty mempty mempty
 
-data AppState = AppState {lights :: Map Text MQTTAPI.LightConfig -- map from uniqueid to config
-                               ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
-                               ,lightIds :: Map Text Int -- map from uniqueid to simple id
-                               }
+data AppState = AppState
+  {lights :: Map Text MQTTAPI.LightConfig -- map from uniqueid to config
+  ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
+  ,lightIds :: Map Text Int -- map from uniqueid to simple id
+  }
+
+swap :: (b, a) -> (a, b)
+swap (x,y) = (y,x)
+
+hueSmallIdToLightConfig :: AppState -> Int -> MQTTAPI.LightConfig
+hueSmallIdToLightConfig AppState{..} smallId = do
+  case Prelude.lookup smallId (swap <$> Map.assocs lightIds) of
+    Nothing -> error ("hueSmallIdToLightConfig: unknown small id:" <> show smallId)
+    Just uid -> case Data.Map.lookup uid lights of
+      Nothing -> error ("hueSmallIdToLightConfig: unknown uid:" <> show uid)
+      Just x -> x
+  
 
 convertAction  :: HueAPI.Action -> MQTTAPI.Action
 convertAction HueAPI.Action{..} = MQTTAPI.Action {
@@ -151,8 +164,8 @@ group1 st@AppState{lights} = mkGroupWithLights st Room "The Void" lights
 updateLightConfig :: MQTTAPI.LightConfig -> AppState -> AppState
 updateLightConfig l AppState {..} =
   AppState { lights = Data.Map.insert uid l lights
-              , lightIds = if uid `member` lightIds then lightIds else insert uid (1 + maximum (0 : elems lightIds)) lightIds
-              , ..}
+           , lightIds = if uid `member` lightIds then lightIds else insert uid (1 + maximum (0 : elems lightIds)) lightIds
+           , ..}
   where uid = unique_id l
 
 updateLightState :: Text -> MQTTAPI.LightState -> AppState -> AppState

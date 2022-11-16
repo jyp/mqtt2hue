@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -63,6 +64,7 @@ hueServerV1 =  createUser
         :<|> allConfig
         :<|> bridgeConfig
         :<|> configuredLights
+        :<|> lightAction
         :<|> configuredGroups
         :<|> configuredGroup
         :<|> groupAction
@@ -157,9 +159,12 @@ bridgePublicConfig = do
   , ..
   } where ServerConfig {..} = serverConfig
 
+askApp :: HueHandler AppState
+askApp = liftIO . readMVar . appState =<< ask
+
 askingState :: ToJSON a => (AppState -> a) -> HueHandler a
 askingState f = do
-  st <- liftIO . readMVar . appState =<< ask
+  st <- askApp
   let x = f st
   liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
   return x
@@ -175,7 +180,23 @@ configuredGroup _ 0 = askingState group0
 configuredGroup _ _ = throwError err404
 
 groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
-groupAction _userId groupId action = error "groupAction: todo"
+groupAction _userId groupId action = do
+  mc <- liftIO . readMVar . mqttState =<< ask
+  error "groupAction: todo"
+
+appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
+appPublish t a = do
+  liftIO (Text.putStrLn ("Publish on " <> unTopic t <> "..."))
+  liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText a)
+  mc <- liftIO . readMVar . mqttState =<< ask
+  liftIO (publish mc t (encode a) False)
+
+lightAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
+lightAction _userId lightId action = do
+  st <- askApp
+  let Just t = mkTopic (state_topic (hueSmallIdToLightConfig st lightId) <> "/set") 
+  appPublish t (convertAction action)
+  return "Updated."
 
 
 allConfig :: String -> HueHandler Everything
