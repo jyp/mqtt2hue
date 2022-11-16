@@ -39,7 +39,8 @@ import Network.MQTT.Topic
 import Network.URI
 import Network.Wai
 import qualified Data.Text as Text
-import qualified Data.Text.Lazy.IO
+import qualified Data.Text.Lazy as Text.Lazy
+import qualified Data.Text.Lazy.IO as Text.Lazy
 import qualified Data.Text.IO as Text
 import Control.Concurrent.MVar
 import Control.Concurrent
@@ -161,13 +162,14 @@ bridgePublicConfig = do
 askApp :: HueHandler AppState
 askApp = liftIO . readMVar . appState =<< ask
 
+askConfig :: HueHandler ServerConfig
 askConfig = asks serverConfig
 
 askingState :: ToJSON a => (AppState -> a) -> HueHandler a
 askingState f = do
   st <- askApp
   let x = f st
-  liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
+  -- liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
   return x
 
 configuredLights :: String -> HueHandler (Map Int Light)
@@ -182,20 +184,18 @@ configuredGroup _ _ = throwError err404
 
 groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
 groupAction _userId groupId action = do
-  mc <- liftIO . readMVar . mqttState =<< ask
   error "groupAction: todo"
 
 appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
 appPublish t a = do
-  liftIO (Text.putStrLn ("Publish on " <> unTopic t <> "..."))
-  liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText a)
+  liftIO (Text.Lazy.putStrLn (">>> " <> Text.Lazy.fromStrict (unTopic t) <> ": " <> encodeToLazyText a))
   mc <- liftIO . readMVar . mqttState =<< ask
   liftIO (publish mc t (encode a) False)
 
 lightAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction _userId lightId action = do
   st <- askApp
-  liftIO $ Text.putStrLn ("Got light " <> Text.pack (show lightId) <> " action " <> Text.pack (show action))
+  liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
   let Just t = mkTopic (state_topic (hueSmallIdToLightConfig st lightId) <> "/set") 
   appPublish t (convertAction action)
   return "Updated."
@@ -211,6 +211,7 @@ allConfig userId = do
   let rules = mempty
   let sensors = mempty
   let resoucelinks = mempty
+  liftIO $ Text.putStrLn ("]]] " <> Text.pack (show lights))
   return Everything {..}
 
 hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
@@ -237,17 +238,16 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
   where
     msgReceived mc _ (unTopic -> topic) msg _properties = do
       let msg' = Data.ByteString.Lazy.toStrict msg
-      Text.putStrLn (topic <> ": " <> decodeUtf8 msg')
+      Text.putStrLn ("<<< " <> topic <> ": " <> decodeUtf8 msg')
       -- Data.ByteString.Lazy.Char8.putStrLn msg
       case (decode msg, decode msg) of
         (Just l,_) | "homeassistant/light" `Text.isPrefixOf` topic -> do
-           Text.putStrLn "Got light config"
            modifyMVarMasked_ st (return . updateLightConfig l)
+           withMVar st $ \AppState{lights} -> Text.putStrLn ("!!!" <> Text.pack (show lights))
            let Just t =  mkTopic (state_topic l <> "/get") 
            publish mc t "{\"state\": \"\"}" False -- request light state now
         (_,Just l) -> do
-          Text.putStrLn "Got light state"
           modifyMVarMasked_ st (return . updateLightState topic l)
+          withMVar st $ \AppState{lightStates} -> Text.putStrLn ("!!!" <> Text.pack (show lightStates))
         _ -> do Text.putStrLn "Unknown kind of message"
-      withMVar st (print . lightIds)
 

@@ -13,15 +13,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
 
 module MQTTAPI where
 
 import GHC.Generics
-import qualified Data.Aeson.Parser
 import Data.Aeson
-import Data.Aeson.Types
-import Data.ByteString
 import Data.Text
 
 import MyAeson
@@ -46,7 +42,7 @@ data OnOff = OFF | ON deriving (Generic, Eq, Show)
 instance FromJSON OnOff
 instance ToJSON OnOff
 
-data UpdateState = UpdateState {state :: Status} deriving Generic
+data UpdateState = UpdateState {state :: Status} deriving (Generic,Show)
 instance FromJSON UpdateState
 instance ToJSON UpdateState
 data LightState = LightState
@@ -58,7 +54,7 @@ data LightState = LightState
     state :: OnOff,
     update:: UpdateState,
     update_available:: Bool
-  } deriving Generic
+  } deriving (Generic,Show)
 instance FromJSON LightState
 instance ToJSON LightState
 
