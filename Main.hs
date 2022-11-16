@@ -50,8 +50,9 @@ main :: IO ()
 main = do
   st <- newMVar blankAppState
   mv <- newEmptyMVar
-  _ <- forkIO (mqttThread mv st)
-  let app = hueApp st
+  let stmv = ServerState st mv
+  _ <- forkIO (mqttThread serverConfig stmv)
+  let app = hueApp stmv
   withStdoutLogger $ \aplogger -> do
     let tlsOpts = tlsSettings "certificate/cert.pem" "certificate/privkey.pem"
         warpOpts = setLogger aplogger $ defaultSettings

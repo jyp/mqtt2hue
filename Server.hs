@@ -34,16 +34,8 @@ import Data.Time.LocalTime
 -- import Network.HTTP.Media ((//), (/:))
 import Network.MQTT.Client
 import Network.MQTT.Topic
--- import Network.MQTT.Types
 import Network.URI
 import Network.Wai
--- import Servant.Types.SourceT (source)
--- import System.Directory
--- import Text.Blaze
--- import Text.Blaze.Html.Renderer.Utf8
--- import qualified Data.Aeson.Parser
--- import qualified Text.Blaze.Html
--- import Network.Wai.Handler.Warp
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy.IO
 import qualified Data.Text.IO as Text
@@ -60,8 +52,10 @@ import HueAPI
 import HueAPIV2
 import MQTTAPI
 
+data ServerState = ServerState {appState :: MVar AppState
+                               ,mqttState :: MVar MQTTClient}
 
-type HueHandler = ReaderT (MVar AppState) Handler
+type HueHandler = ReaderT ServerState Handler
 
 hueServerV1 :: ServerT HueApi HueHandler
 hueServerV1 =  createUser
@@ -165,7 +159,7 @@ bridgePublicConfig = do
 
 askingState :: ToJSON a => (AppState -> a) -> HueHandler a
 askingState f = do
-  st <- liftIO . readMVar =<< ask
+  st <- liftIO . readMVar . appState =<< ask
   let x = f st
   liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
   return x
@@ -199,15 +193,15 @@ allConfig userId = do
 hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
 hueApi = Proxy
 
-hueApp :: MVar AppState -> Application
+hueApp :: ServerState -> Application
 hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
   where funToHandler :: HueHandler a -> Handler a
         funToHandler f = runReaderT f st
 
 
-mqttThread :: MVar MQTTClient -> MVar AppState -> IO ()
-mqttThread mv st = mdo
-  let (Just uri) = parseURI "mqtt://192.168.1.15" -- FIXME: take from server config
+mqttThread :: ServerConfig -> ServerState -> IO ()
+mqttThread ServerConfig {..} (ServerState st mv) = mdo
+  let (Just uri) = parseURI ("mqtt://" <> ipaddress) 
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   putMVar mv mc
   print =<< subscribe mc
