@@ -18,9 +18,10 @@ module Server where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
+import qualified Data.ByteString.Lazy
+import qualified Data.ByteString
 -- import Data.Aeson.Types
 -- import Data.Attoparsec.ByteString
-import Data.ByteString.Lazy.Char8
 import Data.Aeson.Text
 -- import Data.List
 import Data.Map
@@ -43,6 +44,7 @@ import qualified Data.Text.IO as Text
 import Control.Concurrent.MVar
 import Control.Concurrent
 import qualified Servant.Types.SourceT as S
+import Data.Text.Encoding
 
 import Prelude ()
 import Prelude.Compat
@@ -53,7 +55,8 @@ import HueAPI
 import HueAPIV2
 import MQTTAPI
 
-data ServerState = ServerState {appState :: MVar AppState
+data ServerState = ServerState {serverConfig :: ServerConfig
+                               ,appState :: MVar AppState
                                ,mqttState :: MVar MQTTClient}
 
 type HueHandler = ReaderT ServerState Handler
@@ -70,7 +73,7 @@ hueServerV1 =  createUser
         :<|> groupAction
 
 hueServerV2 :: ServerT HueAPIV2.HueApiV2 HueHandler
-hueServerV2 = return (S.fromStepT s)
+hueServerV2 = return (S.fromStepT s) -- FIXME: broken.
        where s = S.Effect (threadDelay 1000000 >> return s)
   -- where s = S.Yield (HueAPIV2.Event {resource = LightRes
   --                                   ,idv1 = _
@@ -84,15 +87,10 @@ hueServerV2 = return (S.fromStepT s)
 hueServer :: ServerT (HueApi :<|> HueAPIV2.HueApiV2) HueHandler
 hueServer = hueServerV1 :<|> hueServerV2
 
-serverConfig :: ServerConfig
-serverConfig = ServerConfig { mac = "90:61:ae:21:8f:6d"
-                            , ipaddress = "192.168.1.50"
-                            , netmask = "255.255.255.0"
-                            , gateway = "192.168.1.1"
-                            }
 
 bridgeConfig :: String -> HueHandler Config
-bridgeConfig _userId = bridgePublicConfig
+bridgeConfig _userId = do
+  bridgePublicConfig
 
 createUser :: CreateUser -> HueHandler [CreatedUser]
 createUser CreateUser {..} = do
@@ -101,6 +99,7 @@ createUser CreateUser {..} = do
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
+ ServerConfig {..} <- askConfig
  now <- liftIO getCurrentTime
  return $ Config
   {name = "MQTT2hue" -- "Philips Hue"
@@ -157,10 +156,12 @@ bridgePublicConfig = do
   ,starterkitid = ""
   ,whitelist = []
   , ..
-  } where ServerConfig {..} = serverConfig
+  }
 
 askApp :: HueHandler AppState
 askApp = liftIO . readMVar . appState =<< ask
+
+askConfig = asks serverConfig
 
 askingState :: ToJSON a => (AppState -> a) -> HueHandler a
 askingState f = do
@@ -194,6 +195,7 @@ appPublish t a = do
 lightAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction _userId lightId action = do
   st <- askApp
+  liftIO $ Text.putStrLn ("Got light " <> Text.pack (show lightId) <> " action " <> Text.pack (show action))
   let Just t = mkTopic (state_topic (hueSmallIdToLightConfig st lightId) <> "/set") 
   appPublish t (convertAction action)
   return "Updated."
@@ -220,9 +222,9 @@ hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
         funToHandler f = runReaderT f st
 
 
-mqttThread :: ServerConfig -> ServerState -> IO ()
-mqttThread ServerConfig {..} (ServerState st mv) = mdo
-  let (Just uri) = parseURI ("mqtt://" <> ipaddress) 
+mqttThread :: ServerState -> IO ()
+mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
+  let (Just uri) = parseURI mqttBroker
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   putMVar mv mc
   print =<< subscribe mc
@@ -234,8 +236,9 @@ mqttThread ServerConfig {..} (ServerState st mv) = mdo
 
   where
     msgReceived mc _ (unTopic -> topic) msg _properties = do
-      print (topic <> ":")
-      Data.ByteString.Lazy.Char8.putStrLn msg
+      let msg' = Data.ByteString.Lazy.toStrict msg
+      Text.putStrLn (topic <> ": " <> decodeUtf8 msg')
+      -- Data.ByteString.Lazy.Char8.putStrLn msg
       case (decode msg, decode msg) of
         (Just l,_) | "homeassistant/light" `Text.isPrefixOf` topic -> do
            Text.putStrLn "Got light config"

@@ -20,5 +20,8 @@ import Prelude ()
 import Prelude.Compat
 
 data ServerConfig = ServerConfig { mac :: String,
-                                   ipaddress, netmask, gateway :: String }
+                                   ipaddress,
+                                   mqttBroker,
+                                   netmask,
+                                   gateway :: String }
 

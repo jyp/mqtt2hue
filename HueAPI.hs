@@ -34,7 +34,7 @@ type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUse
            :<|>  "api" :> Capture "userid" String :>             Get '[JSON] Everything
            :<|>  "api" :> Capture "userid" String :> "config" :> Get '[JSON] Config
            :<|>  "api" :> Capture "userid" String :> "lights" :> Get '[JSON] (Map Int Light)
-           :<|>  "api" :> Capture "userid" String :> "lights" :> Capture "lightid" Int :> "action" :> ReqBody '[JSON] Action :> Put '[JSON] Text
+           :<|>  "api" :> Capture "userid" String :> "lights" :> Capture "lightid" Int :> "state" :> ReqBody '[JSON] Action :> Put '[JSON] Text
            :<|>  "api" :> Capture "userid" String :> "groups" :> Get '[JSON] (Map Int Group)
            :<|>  "api" :> Capture "userid" String :> "groups" :> Capture "groupid" Int :> Get '[JSON] Group
            :<|>  "api" :> Capture "userid" String :> "groups" :> Capture "groupid" Int :> "action" :> ReqBody '[JSON] Action :> Put '[JSON] Text
@@ -130,7 +130,7 @@ data LightState = LightState
   ,effect :: Effect
   ,xy :: Maybe [Float]
   ,alert :: Alert
-  ,colorMode :: Maybe ColorMode
+  ,colormode :: Maybe ColorMode
   ,mode :: LightMode
   ,reachable :: Bool}
   deriving (Eq, Show, Generic)

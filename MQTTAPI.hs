@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE EmptyDataDeriving #-}
@@ -22,6 +23,8 @@ import Data.Aeson
 import Data.Aeson.Types
 import Data.ByteString
 import Data.Text
+
+import MyAeson
 
 data ColorXY = ColorXY {x,y :: Float} deriving (Generic, Show, Eq)
 instance FromJSON ColorXY
@@ -65,7 +68,6 @@ data Action = Action
     state :: Maybe OnOff,
     color_temp :: Maybe Int
   } deriving Generic
-instance ToJSON Action
 
 data Status = Idle | Busy
   deriving (Eq, Show, Generic)
@@ -105,6 +107,8 @@ data LightConfig = LightConfig {
           unique_id :: Text
         } deriving (Generic, Show)
 instance FromJSON LightConfig
+
+$(myDeriveToJSON ''Action)
 
 test1 :: Maybe LightConfig
 test1 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"brightness\":true,\"brightness_scale\":254,\"color_mode\":true,\"command_topic\":\"zigbee2mqtt/Led Strip TV/set\",\"device\":{\"identifiers\":[\"zigbee2mqtt_0x001788010bf4769e\"],\"manufacturer\":\"Philips\",\"model\":\"Hue white and color ambiance LightStrip plus (8718699703424)\",\"name\":\"Led Strip TV\",\"sw_version\":\"1.93.11\"},\"effect\":true,\"effect_list\":[\"blink\",\"breathe\",\"okay\",\"channel_change\",\"finish_effect\",\"stop_effect\"],\"json_attributes_topic\":\"zigbee2mqtt/Led Strip TV\",\"min_mireds\":150,\"name\":\"Led Strip TV\",\"schema\":\"json\",\"state_topic\":\"zigbee2mqtt/Led Strip TV\",\"supported_color_modes\":[\"xy\",\"color_temp\"],\"unique_id\":\"0x001788010bf4769e_light_zigbee2mqtt\"}"

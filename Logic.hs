@@ -46,8 +46,8 @@ convertAction HueAPI.Action{..} = MQTTAPI.Action {
   brightness = bri
   ,color = (<$> xy) $ \case [x,y] -> ColorXY x y; _ -> error "convertAction: xy list wrong length"
   ,state = (<$> on) $ \case
-     False -> ON
-     True -> OFF
+     False -> OFF
+     True -> ON
   ,color_temp = ct
   }
 
@@ -61,7 +61,7 @@ lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,co
                       ,effect = None
                       ,xy = fmap (\(ColorXY x y) -> [x,y]) color
                       ,alert = Select
-                      ,colorMode = (<$> color_mode) $ \case
+                      ,colormode = (<$> color_mode) $ \case
                           TemperatureMode -> CT
                           XYMode -> XY
                       ,mode = HomeAutomation
