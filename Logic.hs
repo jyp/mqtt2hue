@@ -11,7 +11,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Logic where
+module Logic ( AppState(..),
+              --  hue side
+              allHueLights, allHueGroups, group0, handleLightAction,
+              -- MQTT side
+              blankAppState,  updateLightConfig, updateLightState
+             ) where
 
 import MQTTAPI
 import HueAPI
@@ -27,7 +32,7 @@ data AppState = AppState
   {lights :: Map Text MQTTAPI.LightConfig -- map from uniqueid to config
   ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
   ,lightIds :: Map Text Int -- map from uniqueid to simple id
-  }
+  } deriving Show
 
 swap :: (b, a) -> (a, b)
 swap (x,y) = (y,x)
@@ -50,6 +55,28 @@ convertAction HueAPI.Action{..} = MQTTAPI.Action {
      True -> ON
   ,color_temp = ct
   }
+
+applyLightActionOnState ::  MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
+applyLightActionOnState MQTTAPI.Action {..} =
+  maybe id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
+  maybe id (\b s -> s {brightness=b} :: MQTTAPI.LightState) brightness .
+  maybe id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color .
+  maybe id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp
+
+applyLightAction :: MQTTAPI.LightConfig -> MQTTAPI.Action -> AppState -> AppState
+applyLightAction MQTTAPI.LightConfig{state_topic} a st
+  = st {lightStates = Map.alter (fmap (applyLightActionOnState a)) state_topic (lightStates st)}
+
+
+handleLightAction :: Int -> HueAPI.Action -> AppState -> (AppState, (Text, MQTTAPI.Action))
+handleLightAction hueLightId a0 st0 = (st, (t,a))
+ where t = state_topic l
+       a = convertAction a0
+       l = hueSmallIdToLightConfig st0 hueLightId
+       st = applyLightAction l a st0
+       -- update the state so that immediate queries will get the
+       -- optimistically updated state. The real state update will
+       -- occur later when MQTT sends back the true updated light state.
 
 lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
 lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,color}
@@ -143,11 +170,10 @@ mkGroupWithLights :: AppState -> GroupType -> String -> Map Text MQTTAPI.LightCo
 mkGroupWithLights st@AppState{..} _type name groupLights
   = Group {lights = [show i
                     | (uid,_) <- toList groupLights
-                    , let Just i = Data.Map.lookup uid lightIds   ]
+                    , let Just i = Data.Map.lookup uid lightIds]
           ,sensors = mempty
           ,state = GroupState {all_on = and ons
-                              ,any_on = or ons
-                              }
+                              ,any_on = or ons}
           ,recycle = False
           ,_class = Nothing
           ,action = lightStateMqtt2Hue (head (groupLightStates++[blankLightState]))

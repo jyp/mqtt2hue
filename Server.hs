@@ -19,21 +19,12 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
 import qualified Data.ByteString.Lazy
-import qualified Data.ByteString
--- import Data.Aeson.Types
--- import Data.Attoparsec.ByteString
 import Data.Aeson.Text
--- import Data.List
 import Data.Map
 import Data.Maybe
 import Data.String.Conversions
--- import Data.Time.Calendar
--- import Data.Time.Calendar.OrdinalDate
 import Data.Time.Clock
 import Data.Time.LocalTime
--- import GHC.Generics
--- import Lucid
--- import Network.HTTP.Media ((//), (/:))
 import Network.MQTT.Client
 import Network.MQTT.Topic
 import Network.URI
@@ -172,6 +163,14 @@ askingState f = do
   -- liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
   return x
 
+withAppState :: (AppState -> (AppState, a)) -> HueHandler a
+withAppState f = do
+  mv <- asks appState
+  liftIO $ modifyMVarMasked mv $ \st -> do
+    let (st',a) = f st
+    -- putStrLn $ "!!! " <> show st'
+    return (st',a)
+
 configuredLights :: String -> HueHandler (Map Int Light)
 configuredLights _ = askingState allHueLights
 
@@ -183,7 +182,7 @@ configuredGroup _ 0 = askingState group0
 configuredGroup _ _ = throwError err404
 
 groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
-groupAction _userId groupId action = do
+groupAction _userId _groupId _action = do
   error "groupAction: todo"
 
 appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
@@ -194,10 +193,10 @@ appPublish t a = do
 
 lightAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction _userId lightId action = do
-  st <- askApp
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
-  let Just t = mkTopic (state_topic (hueSmallIdToLightConfig st lightId) <> "/set") 
-  appPublish t (convertAction action)
+  (t,a) <- withAppState (handleLightAction lightId action)
+  let Just t' = mkTopic (t <> "/set") 
+  appPublish t' a
   return "Updated."
 
 

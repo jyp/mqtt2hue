@@ -63,7 +63,7 @@ data Action = Action
     color :: Maybe ColorXY,
     state :: Maybe OnOff,
     color_temp :: Maybe Int
-  } deriving Generic
+  } deriving (Generic, Show)
 
 data Status = Idle | Busy
   deriving (Eq, Show, Generic)
