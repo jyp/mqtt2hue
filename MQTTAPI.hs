@@ -21,10 +21,37 @@ import Data.Aeson
 import Data.Text
 
 import MyAeson
+import Text.Read (readMaybe)
+import Data.Word (Word64)
+import Numeric (showHex)
 
 data ColorXY = ColorXY {x,y :: Float} deriving (Generic, Show, Eq)
 instance FromJSON ColorXY
 instance ToJSON ColorXY
+
+newtype IEEEAddress = IEEEAddress Word64 deriving (Generic, Eq, Ord)
+instance Show IEEEAddress where
+  showsPrec _ (IEEEAddress x) = showString ("0x"  <> pad (showHex x []))
+    where pad = Prelude.reverse . Prelude.take 16 .  (++ repeat '0') . Prelude.reverse
+instance Read IEEEAddress where
+  readsPrec d s = [(IEEEAddress x,r) | (x,r) <- readsPrec d s]
+
+-- >>> readMaybe "0x001788010bf4769e" :: Maybe IEEEAddress
+-- Just 0x001788010bf4769e
+
+instance FromJSON IEEEAddress where
+  parseJSON = \case
+    String s -> case readMaybe (unpack s) of
+      Nothing ->  fail "fromJSON: invalid IEEE address number"
+      Just x -> return (IEEEAddress x)
+    _ -> fail "fromJSON: invalid IEEE address"
+
+
+data ZigDevice = ZigDevice
+  {model_id :: String
+  ,network_address :: Int
+  ,ieee_address :: IEEEAddress} deriving (Generic,Show)
+instance FromJSON ZigDevice
 
 data ColorMode = TemperatureMode | XYMode deriving (Generic, Show, Eq)
 instance FromJSON ColorMode where

@@ -230,7 +230,7 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
   print =<< subscribe mc
                       [("homeassistant/light/+/light/config", subOptions {_subQoS = QoS1}),
                        ("zigbee2mqtt/+", subOptions {_subQoS = QoS1})]
-                      -- TODO: read zigbee2mqtt/bridge/devices. Useful to get model_id, network_address, ieee_address
+                      -- TODO: read zigbee2mqtt/bridge/devices as list of ZigDevice
                       []
   waitForClient mc   -- wait for the the client to disconnect
 

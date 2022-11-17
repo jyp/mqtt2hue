@@ -22,16 +22,17 @@ import MQTTAPI
 import HueAPI
 import qualified Data.Map as Map
 import Data.Map
-import Data.Text (Text)
+import Data.Text (Text,splitOn,unpack)
 import Data.Time.Clock
+import Text.Read (readMaybe)
 
 blankAppState :: AppState 
 blankAppState = AppState mempty mempty mempty
 
 data AppState = AppState
-  {lights :: Map Text MQTTAPI.LightConfig -- map from uniqueid to config
+  {lights :: Map IEEEAddress MQTTAPI.LightConfig
   ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
-  ,lightIds :: Map Text Int -- map from uniqueid to simple id
+  ,lightIds :: Map IEEEAddress Int
   } deriving Show
 
 swap :: (b, a) -> (a, b)
@@ -77,12 +78,12 @@ handleLightAction hueLightId a0 st0 = (st, (t,a))
        -- update the state so that immediate queries will get the
        -- optimistically updated state. The real state update will
        -- occur later when MQTT sends back the true updated light state.
-
+                                                    
 lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
 lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,color}
   = HueAPI.LightState {on = state == ON
                       ,bri = brightness
-                      -- ,hue = _ -- FIXME
+                      -- ,hue = _ -- FIXME: calculate hue/sat from x/y
                       -- ,sat = _
                       ,ct = color_temp
                       ,effect = None
@@ -106,7 +107,7 @@ lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productname,..},..}) l
                                               then TemperatureLight
                                               else DimmableLight)
           ,name = name
-          ,modelid = model -- FIXME
+          ,modelid = model -- FIXME get from topic zigbee2mqtt/bridge/devices, field model_id in the relevant element in the list. Identified by friendly_name or ieee_address
           ,manufacturername = manufacturer
           ,productname = productname
           ,capabilities = Capabilities
@@ -166,7 +167,7 @@ allHueLights st@AppState{..} = Map.fromList
 allHueGroups :: AppState -> Map Int Group
 allHueGroups st = Map.fromList [(1,group1 st)]
 
-mkGroupWithLights :: AppState -> GroupType -> String -> Map Text MQTTAPI.LightConfig -> Group
+mkGroupWithLights :: AppState -> GroupType -> String -> Map IEEEAddress MQTTAPI.LightConfig -> Group
 mkGroupWithLights st@AppState{..} _type name groupLights
   = Group {lights = [show i
                     | (uid,_) <- toList groupLights
@@ -192,7 +193,11 @@ updateLightConfig l AppState {..} =
   AppState { lights = Data.Map.insert uid l lights
            , lightIds = if uid `member` lightIds then lightIds else insert uid (1 + maximum (0 : elems lightIds)) lightIds
            , ..}
-  where uid = unique_id l
+  where uid = case splitOn "_" (unique_id l) of
+          (uidText:_) -> case readMaybe (unpack uidText) of
+            Just x -> x
+            Nothing -> error "unique_id does not have correct format (1)"
+          _ -> error "unique_id does not have correct format (2)"
 
 updateLightState :: Text -> MQTTAPI.LightState -> AppState -> AppState
 updateLightState topic l AppState {..} = AppState {lightStates = Data.Map.insert topic l lightStates, ..}
