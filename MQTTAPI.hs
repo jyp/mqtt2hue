@@ -48,10 +48,11 @@ instance FromJSON IEEEAddress where
 
 
 data ZigDevice = ZigDevice
-  {model_id :: String
+  {model_id :: Maybe String -- model_id missing for controller
   ,network_address :: Int
   ,ieee_address :: IEEEAddress} deriving (Generic,Show)
 instance FromJSON ZigDevice
+
 
 data ColorMode = TemperatureMode | XYMode deriving (Generic, Show, Eq)
 instance FromJSON ColorMode where

@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -229,8 +228,8 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
   putMVar mv mc
   print =<< subscribe mc
                       [("homeassistant/light/+/light/config", subOptions {_subQoS = QoS1}),
+                       ("zigbee2mqtt/bridge/devices", subOptions {_subQoS = QoS1}),
                        ("zigbee2mqtt/+", subOptions {_subQoS = QoS1})]
-                      -- TODO: read zigbee2mqtt/bridge/devices as list of ZigDevice
                       []
   waitForClient mc   -- wait for the the client to disconnect
 
@@ -239,14 +238,16 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
       let msg' = Data.ByteString.Lazy.toStrict msg
       Text.putStrLn ("<<< " <> topic <> ": " <> decodeUtf8 msg')
       -- Data.ByteString.Lazy.Char8.putStrLn msg
-      case (decode msg, decode msg) of
-        (Just l,_) | "homeassistant/light" `Text.isPrefixOf` topic -> do
+      case (decode msg, decode msg, decode msg) of
+        (Just l,_,_) | "homeassistant/light" `Text.isPrefixOf` topic -> do
            modifyMVarMasked_ st (return . updateLightConfig l)
            withMVar st $ \AppState{lights} -> Text.putStrLn ("!!!" <> Text.pack (show lights))
            let Just t =  mkTopic (state_topic l <> "/get") 
            publish mc t "{\"state\": \"\"}" False -- request light state now
-        (_,Just l) -> do
+        (_,Just l,_) -> do
           modifyMVarMasked_ st (return . updateLightState topic l)
           withMVar st $ \AppState{lightStates} -> Text.putStrLn ("!!!" <> Text.pack (show lightStates))
+        (_,_,Just ds) -> do
+          modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address d,d) | d <- ds] }))
         _ -> do Text.putStrLn "Unknown kind of message"
 

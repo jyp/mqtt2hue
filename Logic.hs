@@ -27,12 +27,13 @@ import Data.Time.Clock
 import Text.Read (readMaybe)
 
 blankAppState :: AppState 
-blankAppState = AppState mempty mempty mempty
+blankAppState = AppState mempty mempty mempty mempty
 
 data AppState = AppState
   {lights :: Map IEEEAddress MQTTAPI.LightConfig
   ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
   ,lightIds :: Map IEEEAddress Int
+  ,zigDevices :: Map IEEEAddress ZigDevice
   } deriving Show
 
 swap :: (b, a) -> (a, b)
