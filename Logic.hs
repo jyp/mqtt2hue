@@ -27,13 +27,14 @@ import Data.Time.Clock
 import Text.Read (readMaybe)
 
 blankAppState :: AppState 
-blankAppState = AppState mempty mempty mempty mempty
+blankAppState = AppState mempty mempty mempty mempty mempty
 
 data AppState = AppState
   {lights :: Map IEEEAddress MQTTAPI.LightConfig
   ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
   ,lightIds :: Map IEEEAddress Int
   ,zigDevices :: Map IEEEAddress ZigDevice
+  ,groups :: Map Int MQTTAPI.GroupConfig
   } deriving Show
 
 swap :: (b, a) -> (a, b)
@@ -60,10 +61,10 @@ convertAction HueAPI.Action{..} = MQTTAPI.Action {
 
 applyLightActionOnState ::  MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
 applyLightActionOnState MQTTAPI.Action {..} =
-  maybe id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
-  maybe id (\b s -> s {brightness=b} :: MQTTAPI.LightState) brightness .
-  maybe id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color .
-  maybe id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp
+  maybe Prelude.id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
+  maybe Prelude.id (\b s -> s {brightness=b} :: MQTTAPI.LightState) brightness .
+  maybe Prelude.id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color .
+  maybe Prelude.id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp
 
 applyLightAction :: MQTTAPI.LightConfig -> MQTTAPI.Action -> AppState -> AppState
 applyLightAction MQTTAPI.LightConfig{state_topic} a st

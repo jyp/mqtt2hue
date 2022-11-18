@@ -132,6 +132,23 @@ data LightConfig = LightConfig {
         } deriving (Generic, Show)
 instance FromJSON LightConfig
 
+data GroupMember = GroupMember
+  { ieee_address :: IEEEAddress,
+    endpoint :: Maybe Text -- 1,2,... or left, right.
+  } deriving (Show,Generic)
+
+data SceneRef = SceneRef {id :: Int, name :: Text}
+ deriving (Show,Generic)
+data GroupConfig = GroupConfig
+  {     id :: Int,
+        friendly_name :: Text,
+        scenes :: [SceneRef],
+        members :: [GroupMember]
+  } deriving (Show,Generic)
+instance FromJSON GroupMember
+instance FromJSON SceneRef
+instance FromJSON GroupConfig
+
 $(myDeriveToJSON ''Action)
 
 test1 :: Maybe LightConfig

@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -20,8 +21,6 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy
 import Data.Aeson.Text
 import Data.Map
-import Data.Maybe
-import Data.String.Conversions
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Network.MQTT.Client
@@ -37,8 +36,6 @@ import Control.Concurrent
 import qualified Servant.Types.SourceT as S
 import Data.Text.Encoding
 
-import Prelude ()
-import Prelude.Compat
 import Servant
 import Logic
 import Types
@@ -226,10 +223,12 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
   let (Just uri) = parseURI mqttBroker
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   putMVar mv mc
-  print =<< subscribe mc
-                      [("homeassistant/light/+/light/config", subOptions {_subQoS = QoS1}),
-                       ("zigbee2mqtt/bridge/devices", subOptions {_subQoS = QoS1}),
-                       ("zigbee2mqtt/+", subOptions {_subQoS = QoS1})]
+  let opts = opts 
+  print =<< subscribe mc ((,subOptions {_subQoS = QoS1}) <$>
+                          ["homeassistant/light/+/light/config",
+                           "zigbee2mqtt/bridge/devices",
+                           "zigbee2mqtt/bridge/groups",
+                           "zigbee2mqtt/+"])
                       []
   waitForClient mc   -- wait for the the client to disconnect
 
@@ -238,16 +237,22 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
       let msg' = Data.ByteString.Lazy.toStrict msg
       Text.putStrLn ("<<< " <> topic <> ": " <> decodeUtf8 msg')
       -- Data.ByteString.Lazy.Char8.putStrLn msg
-      case (decode msg, decode msg, decode msg) of
-        (Just l,_,_) | "homeassistant/light" `Text.isPrefixOf` topic -> do
+      case () of
+        () | "homeassistant/light" `Text.isPrefixOf` topic,
+             Just l <- decode msg  -> do
            modifyMVarMasked_ st (return . updateLightConfig l)
            withMVar st $ \AppState{lights} -> Text.putStrLn ("!!!" <> Text.pack (show lights))
            let Just t =  mkTopic (state_topic l <> "/get") 
            publish mc t "{\"state\": \"\"}" False -- request light state now
-        (_,Just l,_) -> do
+        () | Just l <- decode msg -> do -- any topic is acceptable here
           modifyMVarMasked_ st (return . updateLightState topic l)
           withMVar st $ \AppState{lightStates} -> Text.putStrLn ("!!!" <> Text.pack (show lightStates))
-        (_,_,Just ds) -> do
-          modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address d,d) | d <- ds] }))
+        () | topic == "zigbee2mqtt/bridge/devices",
+             Just ds <- decode msg -> do
+          modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address,d) | d@ZigDevice{ieee_address} <- ds] }))
+        () | topic == "zigbee2mqtt/bridge/groups",
+             Just gs <- decode msg -> do
+          modifyMVarMasked_ st (\s -> return (s {groups = fromList [(i,d) | d@MQTTAPI.GroupConfig{id=i} <- gs] } :: AppState))
+          withMVar st $ \AppState{groups} -> Text.putStrLn ("!!!" <> Text.pack (show groups))
         _ -> do Text.putStrLn "Unknown kind of message"
 
