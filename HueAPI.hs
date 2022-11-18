@@ -179,9 +179,9 @@ data ColorGamutType = C | Other
 data Ct = CtValues {min :: Int,  max :: Int}
   deriving (Eq, Show, Generic)
 data Group = Group
-  { name :: String
-  , lights :: [String]
-  , sensors :: [String]
+  { name :: Text
+  , lights :: [Text]
+  , sensors :: [Text]
   , _type :: GroupType
   , state :: GroupState
   , recycle ::  Bool

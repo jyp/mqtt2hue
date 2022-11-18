@@ -22,7 +22,7 @@ import MQTTAPI
 import HueAPI
 import qualified Data.Map as Map
 import Data.Map
-import Data.Text (Text,splitOn,unpack)
+import Data.Text (Text,splitOn,unpack,pack)
 import Data.Time.Clock
 import Text.Read (readMaybe)
 
@@ -61,10 +61,10 @@ convertAction HueAPI.Action{..} = MQTTAPI.Action {
 
 applyLightActionOnState ::  MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
 applyLightActionOnState MQTTAPI.Action {..} =
-  maybe Prelude.id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
-  maybe Prelude.id (\b s -> s {brightness=b} :: MQTTAPI.LightState) brightness .
-  maybe Prelude.id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color .
-  maybe Prelude.id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp
+  maybe id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
+  maybe id (\b s -> s {brightness=b} :: MQTTAPI.LightState) brightness .
+  maybe id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color .
+  maybe id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp
 
 applyLightAction :: MQTTAPI.LightConfig -> MQTTAPI.Action -> AppState -> AppState
 applyLightAction MQTTAPI.LightConfig{state_topic} a st
@@ -166,12 +166,9 @@ allHueLights st@AppState{..} = Map.fromList
   , let Just i = Data.Map.lookup uid lightIds
   ]
 
-allHueGroups :: AppState -> Map Int Group
-allHueGroups st = Map.fromList [(1,group1 st)]
-
-mkGroupWithLights :: AppState -> GroupType -> String -> Map IEEEAddress MQTTAPI.LightConfig -> Group
+mkGroupWithLights :: AppState -> GroupType -> Text -> Map IEEEAddress MQTTAPI.LightConfig -> Group
 mkGroupWithLights st@AppState{..} _type name groupLights
-  = Group {lights = [show i
+  = Group {lights = [pack (show i)
                     | (uid,_) <- toList groupLights
                     , let Just i = Data.Map.lookup uid lightIds]
           ,sensors = mempty
@@ -187,9 +184,6 @@ mkGroupWithLights st@AppState{..} _type name groupLights
 group0 :: AppState -> Group
 group0 st@AppState{lights} = mkGroupWithLights st LightGroup "Group 0" lights
 
-group1 :: AppState -> Group
-group1 st@AppState{lights} = mkGroupWithLights st Room "The Void" lights
-
 updateLightConfig :: MQTTAPI.LightConfig -> AppState -> AppState
 updateLightConfig l AppState {..} =
   AppState { lights = Data.Map.insert uid l lights
@@ -204,3 +198,15 @@ updateLightConfig l AppState {..} =
 updateLightState :: Text -> MQTTAPI.LightState -> AppState -> AppState
 updateLightState topic l AppState {..} = AppState {lightStates = Data.Map.insert topic l lightStates, ..}
 
+
+translateGroup :: AppState -> GroupConfig -> Group
+translateGroup st@AppState{lights} GroupConfig{..}
+  = mkGroupWithLights st Room friendly_name
+      (Map.fromList [(ieee_address,l)
+                    | GroupMember {ieee_address} <- members
+                    , Just l <- [Map.lookup ieee_address lights]])
+
+allHueGroups :: AppState -> Map Int Group
+allHueGroups st@AppState{groups}
+  = Map.fromList [ (_id,translateGroup st g)
+                 | (_id,g) <- Map.assocs groups]

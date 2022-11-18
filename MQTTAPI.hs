@@ -137,18 +137,17 @@ data GroupMember = GroupMember
     endpoint :: Maybe Text -- 1,2,... or left, right.
   } deriving (Show,Generic)
 
-data SceneRef = SceneRef {id :: Int, name :: Text}
+data SceneRef = SceneRef {_id :: Int, name :: Text}
  deriving (Show,Generic)
 data GroupConfig = GroupConfig
-  {     id :: Int,
+  {     _id :: Int,
         friendly_name :: Text,
         scenes :: [SceneRef],
         members :: [GroupMember]
   } deriving (Show,Generic)
 instance FromJSON GroupMember
-instance FromJSON SceneRef
-instance FromJSON GroupConfig
-
+$(myDeriveFromJSON ''SceneRef)
+$(myDeriveFromJSON ''GroupConfig)
 $(myDeriveToJSON ''Action)
 
 test1 :: Maybe LightConfig

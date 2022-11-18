@@ -252,7 +252,7 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
           modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address,d) | d@ZigDevice{ieee_address} <- ds] }))
         () | topic == "zigbee2mqtt/bridge/groups",
              Just gs <- decode msg -> do
-          modifyMVarMasked_ st (\s -> return (s {groups = fromList [(i,d) | d@MQTTAPI.GroupConfig{id=i} <- gs] } :: AppState))
+          modifyMVarMasked_ st (\s -> return (s {groups = fromList [(i,d) | d@MQTTAPI.GroupConfig{_id=i} <- gs] } :: AppState))
           withMVar st $ \AppState{groups} -> Text.putStrLn ("!!!" <> Text.pack (show groups))
         _ -> do Text.putStrLn "Unknown kind of message"
 
