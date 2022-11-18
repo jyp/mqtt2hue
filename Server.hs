@@ -100,6 +100,8 @@ bridgePublicConfig = do
   ,localtime = now
   ,timezone = "Europe/Stockholm"
   ,modelid = "BSB001"
+    -- BSB001 is Hue bridge 1st gen
+    -- BSB002 is Hue bridge 2st gen
   ,datastoreversion = "131"
   ,swversion = "1953188020"
   -- ,apiversion = "1.53.0"
@@ -244,7 +246,8 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
            withMVar st $ \AppState{lights} -> Text.putStrLn ("!!!" <> Text.pack (show lights))
            let Just t =  mkTopic (state_topic l <> "/get") 
            publish mc t "{\"state\": \"\"}" False -- request light state now
-        () | Just l <- decode msg -> do -- any topic is acceptable here
+        () | "zigbee2mqtt/" `Text.isPrefixOf` topic,
+             Just (l::MQTTAPI.LightState) <- decode msg -> do
           modifyMVarMasked_ st (return . updateLightState topic l)
           withMVar st $ \AppState{lightStates} -> Text.putStrLn ("!!!" <> Text.pack (show lightStates))
         () | topic == "zigbee2mqtt/bridge/devices",
