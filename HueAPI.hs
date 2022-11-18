@@ -96,7 +96,6 @@ data Light = Light { state :: LightState
   deriving (Eq, Show)
 
 instance ToJSON Effect
-instance ToJSON Alert
 instance ToJSON ColorMode where
   toJSON = \case
      CT -> "ct"
@@ -142,8 +141,12 @@ data Action = Action {
   } deriving (Eq, Show, Generic)
 instance FromJSON Action
 
-data Alert = Select
+data Alert = SelectAlert | NoAlert
   deriving (Eq, Show, Generic)
+instance ToJSON Alert where
+  toJSON = \case
+    SelectAlert -> "select"
+    NoAlert -> "none"
 data Effect = None
   deriving (Eq, Show, Generic)
 data ColorMode = CT | XY

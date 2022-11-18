@@ -105,7 +105,7 @@ lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,co
                       ,ct = color_temp
                       ,effect = None
                       ,xy = fmap (\(ColorXY x y) -> [x,y]) color
-                      ,alert = Select
+                      ,alert = SelectAlert
                       ,colormode = (<$> color_mode) $ \case
                           TemperatureMode -> CT
                           XYMode -> XY
@@ -145,20 +145,6 @@ lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productname,..},..}) l
           ,swversion = sw_version
           }
 
-
--- blankLightState :: HueAPI.LightState
--- blankLightState = HueAPI.LightState { on = True
---                                     , bri = 23
---                                     -- , hue = 44
---                                     -- , sat = 15
---                                     , ct = Nothing
---                                     , effect = None
---                                     , xy = Nothing
---                                     , alert = Select
---                                     , colorMode = Nothing
---                                     , mode = HomeAutomation
---                                     , reachable = True}
-
 blankLightState :: MQTTAPI.LightState
 blankLightState = MQTTAPI.LightState
   {brightness = Nothing
@@ -182,9 +168,9 @@ allHueLights st@AppState{..} = Map.fromList
   ]
 
 mkGroupWithLights :: AppState -> GroupType -> Text -> Map IEEEAddress MQTTAPI.LightConfig -> Group
-mkGroupWithLights st@AppState{..} _type name groupLights
+mkGroupWithLights st@AppState{..} _type name ls
   = Group {lights = [pack (show i)
-                    | (uid,_) <- toList groupLights
+                    | (uid,_) <- toList ls
                     , let Just i = Data.Map.lookup uid lightIds]
           ,sensors = mempty
           ,state = GroupState {all_on = and ons
@@ -194,7 +180,7 @@ mkGroupWithLights st@AppState{..} _type name groupLights
           ,action = lightStateMqtt2Hue (head (groupLightStates++[blankLightState]))
           ,..}
   where ons = [state == ON | MQTTAPI.LightState{state} <- groupLightStates  ]
-        groupLightStates = getLightState st . snd <$> toList groupLights
+        groupLightStates = getLightState st . snd <$> toList ls
   
 group0 :: AppState -> Group
 group0 st@AppState{lights} = mkGroupWithLights st LightGroup "Group 0" lights
