@@ -161,13 +161,18 @@ askingState f = do
   -- liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
   return x
 
-withAppState :: (AppState -> (AppState, a)) -> HueHandler a
+withAppState :: (AppState -> Maybe (AppState, a)) -> HueHandler a
 withAppState f = do
   mv <- asks appState
-  liftIO $ modifyMVarMasked mv $ \st -> do
-    let (st',a) = f st
+  x <- liftIO $ modifyMVarMasked mv $ \st -> return $ 
+    case f st of
+      Nothing -> (st,Nothing)
+      Just (st',a) -> (st',Just a)
+  case x of
+    Nothing -> throwError err400
+    Just a -> return a
     -- putStrLn $ "!!! " <> show st'
-    return (st',a)
+    
 
 configuredLights :: String -> HueHandler (Map Int Light)
 configuredLights _ = askingState allHueLights
@@ -180,8 +185,12 @@ configuredGroup _ 0 = askingState group0
 configuredGroup _ _ = throwError err404
 
 groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
-groupAction _userId _groupId _action = do
-  error "groupAction: todo"
+groupAction _userId groupId a0 = do
+  liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show groupId) <> " " <> Text.pack (show a0))
+  (t,a) <- withAppState (handleGroupAction groupId a0)
+  let Just t' = mkTopic (t <> "/set") 
+  appPublish t' a
+  return "Updated."
 
 appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
 appPublish t a = do
@@ -192,8 +201,8 @@ appPublish t a = do
 lightAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction _userId lightId action = do
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
-  (t,a) <- withAppState (handleLightAction lightId action)
-  let Just t' = mkTopic (t <> "/set") 
+  (t,a) <- withAppState (Just . handleLightAction lightId action )
+  let Just t' = mkTopic t
   appPublish t' a
   return "Updated."
 
@@ -208,7 +217,7 @@ allConfig userId = do
   let rules = mempty
   let sensors = mempty
   let resoucelinks = mempty
-  liftIO $ Text.putStrLn ("]]] " <> Text.pack (show lights))
+  liftIO $ Text.Lazy.putStrLn ("]]] " <> encodeToLazyText lights)
   return Everything {..}
 
 hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)

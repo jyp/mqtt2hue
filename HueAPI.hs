@@ -178,6 +178,14 @@ data ColorGamutType = C | Other
   deriving (Eq, Show, Generic)
 data Ct = CtValues {min :: Int,  max :: Int}
   deriving (Eq, Show, Generic)
+data GroupCreate = GroupCreate
+  { name :: Text
+  , lights :: [Text]
+  , sensors :: [Text]
+  , _type :: GroupType
+  }
+data Success a = Success {success :: a}
+data IdOnly = IdOnly {_id :: Text}
 data Group = Group
   { name :: Text
   , lights :: [Text]

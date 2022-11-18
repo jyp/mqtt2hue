@@ -74,7 +74,7 @@ data UpdateState = UpdateState {state :: Status} deriving (Generic,Show)
 instance FromJSON UpdateState
 instance ToJSON UpdateState
 data LightState = LightState
-  { brightness :: Int,
+  { brightness :: Maybe Int,
     color :: Maybe ColorXY,
     color_mode :: Maybe ColorMode,
     color_temp:: Maybe Int,
@@ -131,24 +131,32 @@ data LightConfig = LightConfig {
           unique_id :: Text
         } deriving (Generic, Show)
 instance FromJSON LightConfig
+  
 
 data GroupMember = GroupMember
-  { ieee_address :: IEEEAddress,
-    endpoint :: Maybe Text -- 1,2,... or left, right.
+  { ieee_address :: IEEEAddress
+  , endpoint :: Choice Int Text -- 1,2,... or left, right.
   } deriving (Show,Generic)
 
 data SceneRef = SceneRef {_id :: Int, name :: Text}
  deriving (Show,Generic)
 data GroupConfig = GroupConfig
-  {     _id :: Int,
-        friendly_name :: Text,
-        scenes :: [SceneRef],
-        members :: [GroupMember]
+  {_id :: Int
+  ,friendly_name :: Text
+  ,scenes :: [SceneRef]
+  ,members :: [GroupMember]
   } deriving (Show,Generic)
 instance FromJSON GroupMember
 $(myDeriveFromJSON ''SceneRef)
 $(myDeriveFromJSON ''GroupConfig)
 $(myDeriveToJSON ''Action)
+
+test0 :: Maybe [GroupConfig]
+
+test0 = decode "[{\"friendly_name\":\"Living Room Upstairs\",\"id\":1,\"members\":[{\"endpoint\":11,\"ieee_address\":\"0x001788010bf4769e\"}],\"scenes\":[]}]"
+
+-- >>> test0
+-- Just [GroupConfig {_id = 1, friendly_name = "Living Room Upstairs", scenes = [], members = [GroupMember {ieee_address = 0x001788010bf4769e, endpoint = Opt1 11}]}]
 
 test1 :: Maybe LightConfig
 test1 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"brightness\":true,\"brightness_scale\":254,\"color_mode\":true,\"command_topic\":\"zigbee2mqtt/Led Strip TV/set\",\"device\":{\"identifiers\":[\"zigbee2mqtt_0x001788010bf4769e\"],\"manufacturer\":\"Philips\",\"model\":\"Hue white and color ambiance LightStrip plus (8718699703424)\",\"name\":\"Led Strip TV\",\"sw_version\":\"1.93.11\"},\"effect\":true,\"effect_list\":[\"blink\",\"breathe\",\"okay\",\"channel_change\",\"finish_effect\",\"stop_effect\"],\"json_attributes_topic\":\"zigbee2mqtt/Led Strip TV\",\"min_mireds\":150,\"name\":\"Led Strip TV\",\"schema\":\"json\",\"state_topic\":\"zigbee2mqtt/Led Strip TV\",\"supported_color_modes\":[\"xy\",\"color_temp\"],\"unique_id\":\"0x001788010bf4769e_light_zigbee2mqtt\"}"

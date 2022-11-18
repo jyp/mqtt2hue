@@ -53,7 +53,7 @@ main = do
   mv <- newEmptyMVar
   let cfg = ServerConfig { mac = "90:61:ae:21:8f:6d"
                          , ipaddress = "192.168.1.50"
-                         , mqttBroker = "mqtt://192.168.1.15"
+                         , mqttBroker = "mqtt://huey:qwftyrsi@192.168.1.15"
                          , netmask = "255.255.255.0"
                          , gateway = "192.168.1.1"
                          }

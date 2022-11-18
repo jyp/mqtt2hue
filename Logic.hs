@@ -13,11 +13,12 @@
 
 module Logic ( AppState(..),
               --  hue side
-              allHueLights, allHueGroups, group0, handleLightAction,
+              allHueLights, allHueGroups, group0, handleLightAction, handleGroupAction,
               -- MQTT side
               blankAppState,  updateLightConfig, updateLightState
              ) where
 
+import Data.Maybe
 import MQTTAPI
 import HueAPI
 import qualified Data.Map as Map
@@ -62,29 +63,43 @@ convertAction HueAPI.Action{..} = MQTTAPI.Action {
 applyLightActionOnState ::  MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
 applyLightActionOnState MQTTAPI.Action {..} =
   maybe id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
-  maybe id (\b s -> s {brightness=b} :: MQTTAPI.LightState) brightness .
+  maybe id (\b s -> s {brightness=Just b} :: MQTTAPI.LightState) brightness .
   maybe id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color .
   maybe id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp
 
-applyLightAction :: MQTTAPI.LightConfig -> MQTTAPI.Action -> AppState -> AppState
-applyLightAction MQTTAPI.LightConfig{state_topic} a st
+applyLightAction :: MQTTAPI.Action -> MQTTAPI.LightConfig -> AppState -> AppState
+applyLightAction a MQTTAPI.LightConfig{state_topic} st
   = st {lightStates = Map.alter (fmap (applyLightActionOnState a)) state_topic (lightStates st)}
 
+applyGroupAction :: MQTTAPI.Action -> MQTTAPI.GroupConfig -> AppState -> AppState
+applyGroupAction a g st = Prelude.foldr (applyLightAction a) st (groupLights st g)
 
 handleLightAction :: Int -> HueAPI.Action -> AppState -> (AppState, (Text, MQTTAPI.Action))
-handleLightAction hueLightId a0 st0 = (st, (t,a))
- where t = state_topic l
+handleLightAction hueLightId a0 st0 = (st, (t,a)) 
+ where t = state_topic l <> "/set"
        a = convertAction a0
        l = hueSmallIdToLightConfig st0 hueLightId
-       st = applyLightAction l a st0
+       st = applyLightAction a l st0
        -- update the state so that immediate queries will get the
        -- optimistically updated state. The real state update will
        -- occur later when MQTT sends back the true updated light state.
-                                                    
+
+handleGroupAction :: Int -> HueAPI.Action -> AppState -> Maybe (AppState, (Text, MQTTAPI.Action))
+handleGroupAction groupId a0 st0@AppState{groups} = do
+  g@GroupConfig{friendly_name} <- Data.Map.lookup groupId groups
+  let t = "zigbee2mqtt/" <> friendly_name  <> "/set"
+      a = convertAction a0
+      st = applyGroupAction a g st0
+       -- update the state so that immediate queries will get the
+       -- optimistically updated state. The real state update will
+       -- occur later when MQTT sends back the true updated light state.
+  return (st, (t,a))
+
+            
 lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
 lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,color}
   = HueAPI.LightState {on = state == ON
-                      ,bri = brightness
+                      ,bri = Data.Maybe.fromMaybe 0 brightness
                       -- ,hue = _ -- FIXME: calculate hue/sat from x/y
                       -- ,sat = _
                       ,ct = color_temp
@@ -146,7 +161,7 @@ lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productname,..},..}) l
 
 blankLightState :: MQTTAPI.LightState
 blankLightState = MQTTAPI.LightState
-  {brightness = 0
+  {brightness = Nothing
   ,color = Nothing
   ,color_mode = Nothing
   ,color_temp = Nothing
@@ -184,27 +199,36 @@ mkGroupWithLights st@AppState{..} _type name groupLights
 group0 :: AppState -> Group
 group0 st@AppState{lights} = mkGroupWithLights st LightGroup "Group 0" lights
 
-updateLightConfig :: MQTTAPI.LightConfig -> AppState -> AppState
-updateLightConfig l AppState {..} =
-  AppState { lights = Data.Map.insert uid l lights
-           , lightIds = if uid `member` lightIds then lightIds else insert uid (1 + maximum (0 : elems lightIds)) lightIds
-           , ..}
+
+lightAddress :: MQTTAPI.LightConfig -> IEEEAddress
+lightAddress l = uid
   where uid = case splitOn "_" (unique_id l) of
           (uidText:_) -> case readMaybe (unpack uidText) of
             Just x -> x
             Nothing -> error "unique_id does not have correct format (1)"
           _ -> error "unique_id does not have correct format (2)"
 
+updateLightConfig :: MQTTAPI.LightConfig -> AppState -> AppState
+updateLightConfig l AppState {..} =
+  AppState { lights = Data.Map.insert uid l lights
+           , lightIds = if uid `member` lightIds then lightIds else insert uid (1 + maximum (0 : elems lightIds)) lightIds
+           , ..}
+  where uid = lightAddress l
+
 updateLightState :: Text -> MQTTAPI.LightState -> AppState -> AppState
 updateLightState topic l AppState {..} = AppState {lightStates = Data.Map.insert topic l lightStates, ..}
 
 
 translateGroup :: AppState -> GroupConfig -> Group
-translateGroup st@AppState{lights} GroupConfig{..}
+translateGroup st g@GroupConfig{friendly_name}
   = mkGroupWithLights st Room friendly_name
-      (Map.fromList [(ieee_address,l)
-                    | GroupMember {ieee_address} <- members
-                    , Just l <- [Map.lookup ieee_address lights]])
+      (Map.fromList [(lightAddress l,l) | l <- groupLights st g])
+
+groupLights :: AppState -> GroupConfig -> [MQTTAPI.LightConfig]
+groupLights AppState{lights} GroupConfig{..} =
+  [l | GroupMember {ieee_address} <- members
+     , Just l <- [Map.lookup ieee_address lights]]
+  
 
 allHueGroups :: AppState -> Map Int Group
 allHueGroups st@AppState{groups}
