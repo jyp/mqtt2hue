@@ -181,8 +181,7 @@ configuredGroups :: String -> HueHandler (Map Int Group)
 configuredGroups _ = askingState allHueGroups
 
 configuredGroup :: String -> Int -> HueHandler Group
-configuredGroup _ 0 = askingState group0
-configuredGroup _ _ = throwError err404
+configuredGroup _ i = withAppState (getHueGroup i)
 
 groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
 groupAction _userId groupId a0 = do
@@ -217,8 +216,9 @@ allConfig userId = do
   let rules = mempty
   let sensors = mempty
   let resoucelinks = mempty
-  liftIO $ Text.Lazy.putStrLn ("]]] " <> encodeToLazyText lights)
-  return Everything {..}
+  let e = Everything{..}
+  liftIO $ Text.Lazy.putStrLn ("]]] " <> encodeToLazyText e)
+  return e
 
 hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
 hueApi = Proxy

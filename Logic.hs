@@ -1,4 +1,3 @@
-{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -13,9 +12,9 @@
 
 module Logic ( AppState(..),
               --  hue side
-              allHueLights, allHueGroups, group0, handleLightAction, handleGroupAction,
+              allHueLights, allHueGroups, handleLightAction, handleGroupAction, getHueGroup,
               -- MQTT side
-              blankAppState,  updateLightConfig, updateLightState
+              blankAppState,  updateLightConfig, updateLightState, 
              ) where
 
 import Data.Maybe
@@ -26,6 +25,7 @@ import Data.Map
 import Data.Text (Text,splitOn,unpack,pack)
 import Data.Time.Clock
 import Text.Read (readMaybe)
+import MyAeson(Choice(..))
 
 blankAppState :: AppState 
 blankAppState = AppState mempty mempty mempty mempty mempty
@@ -86,7 +86,7 @@ handleLightAction hueLightId a0 st0 = (st, (t,a))
 
 handleGroupAction :: Int -> HueAPI.Action -> AppState -> Maybe (AppState, (Text, MQTTAPI.Action))
 handleGroupAction groupId a0 st0@AppState{groups} = do
-  g@GroupConfig{friendly_name} <- Data.Map.lookup groupId groups
+  g@GroupConfig{friendly_name} <- if groupId == 0 then Just (group0 st0) else Data.Map.lookup groupId groups
   let t = "zigbee2mqtt/" <> friendly_name  <> "/set"
       a = convertAction a0
       st = applyGroupAction a g st0
@@ -158,7 +158,22 @@ blankLightState = MQTTAPI.LightState
   }
 
 getLightState :: AppState -> MQTTAPI.LightConfig -> MQTTAPI.LightState
-getLightState AppState{..} cfg =  Data.Map.findWithDefault blankLightState (state_topic cfg) lightStates
+getLightState AppState{..} cfg
+  = enrichLightState (supported_color_modes cfg)
+    (Data.Map.findWithDefault blankLightState (state_topic cfg) lightStates)
+
+-- | Invent some colors if the light support them (otherwise Gnome app
+-- won't see it does in fact support them)
+enrichLightState :: [MQTTAPI.ColorMode] -> MQTTAPI.LightState -> MQTTAPI.LightState
+enrichLightState cmodes ls@MQTTAPI.LightState{color,color_temp} =
+  ls {color =
+         if XYMode `elem` cmodes && isNothing color
+         then Just (ColorXY 0.4 0.4)
+         else Nothing
+     ,color_temp =
+         if TemperatureMode `elem` cmodes && isNothing color_temp
+         then Just 400
+         else Nothing}
 
 allHueLights :: AppState -> Map Int Light
 allHueLights st@AppState{..} = Map.fromList
@@ -177,14 +192,25 @@ mkGroupWithLights st@AppState{..} _type name ls
                               ,any_on = or ons}
           ,recycle = False
           ,_class = Nothing
-          ,action = lightStateMqtt2Hue (head (groupLightStates++[blankLightState]))
+          ,action = lightStateMqtt2Hue (head (groupLightStates++[blankLightState])) -- FIXME
           ,..}
   where ons = [state == ON | MQTTAPI.LightState{state} <- groupLightStates  ]
         groupLightStates = getLightState st . snd <$> toList ls
   
-group0 :: AppState -> Group
-group0 st@AppState{lights} = mkGroupWithLights st LightGroup "Group 0" lights
-
+group0 :: AppState -> MQTTAPI.GroupConfig
+group0 AppState{lights} = GroupConfig 
+  {_id = 0
+  ,friendly_name = "All lights"
+  ,scenes = []
+  ,members = [GroupMember {ieee_address = a ,endpoint = Opt1 0} | (a,_) <- assocs lights]
+  }
+  
+getHueGroup :: Int -> AppState -> Maybe (AppState,Group)
+getHueGroup i st@AppState{groups} = do
+  g <- case i of
+    0 -> return (group0 st)
+    _ -> Data.Map.lookup i groups
+  return (st,groupMqtt2Hue st g)
 
 lightAddress :: MQTTAPI.LightConfig -> IEEEAddress
 lightAddress l = uid
@@ -205,8 +231,8 @@ updateLightState :: Text -> MQTTAPI.LightState -> AppState -> AppState
 updateLightState topic l AppState {..} = AppState {lightStates = Data.Map.insert topic l lightStates, ..}
 
 
-translateGroup :: AppState -> GroupConfig -> Group
-translateGroup st g@GroupConfig{friendly_name}
+groupMqtt2Hue :: AppState -> GroupConfig -> Group
+groupMqtt2Hue st g@GroupConfig{friendly_name}
   = mkGroupWithLights st Room friendly_name
       (Map.fromList [(lightAddress l,l) | l <- groupLights st g])
 
@@ -218,5 +244,5 @@ groupLights AppState{lights} GroupConfig{..} =
 
 allHueGroups :: AppState -> Map Int Group
 allHueGroups st@AppState{groups}
-  = Map.fromList [ (_id,translateGroup st g)
+  = Map.fromList [ (_id,groupMqtt2Hue st g)
                  | (_id,g) <- Map.assocs groups]
