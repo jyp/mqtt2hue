@@ -150,29 +150,3 @@ Unknown kind of message
 #+end_src
 
 
-- Does not update state correctly:
-
-<<< zigbee2mqtt/TV Backlight:
-
-#+begin_src js
-{
-  "brightness": 21,
-  "color": {
-    "h": 27,
-    "hue": 27,
-    "s": 92,
-    "saturation": 92,
-    "x": 0.5097,
-    "y": 0.415
-  },
-  "color_mode": "color_temp",
-  "color_temp": 463,
-  "color_temp_startup": 500,
-  "linkquality": 36,
-  "state": "ON",
-  "update": {
-    "state": "idle"
-  },
-  "update_available": false
-}
-#+end_src

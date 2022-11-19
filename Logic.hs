@@ -169,11 +169,11 @@ enrichLightState cmodes ls@MQTTAPI.LightState{color,color_temp} =
   ls {color =
          if XYMode `elem` cmodes && isNothing color
          then Just (ColorXY 0.4 0.4)
-         else Nothing
+         else color
      ,color_temp =
          if TemperatureMode `elem` cmodes && isNothing color_temp
          then Just 400
-         else Nothing}
+         else color_temp}
 
 allHueLights :: AppState -> Map Int Light
 allHueLights st@AppState{..} = Map.fromList
