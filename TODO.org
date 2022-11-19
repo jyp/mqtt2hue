@@ -1,0 +1,178 @@
+
+
+- Handle <<< zigbee2mqtt/Living Room Upstairs: {"brightness":85,"color":{"h":27,"hue":27,"s":92,"saturation":92,"x":0.5046,"y":0.4152},"color_mode":"color_temp","color_temp":452,"state":"ON"}
+Unknown kind of message
+
+- Group: No converter available for 'set' ({"brightness":115})
+
+
+- Unhandled config:
+
+#+begin_src js
+{
+  "config": {
+    "UTC": "2022-11-19T19:42:08.527986537Z",
+    "apiversion": "1.45.0",
+    "backup": {
+      "errorcode": 0,
+      "status": "idle"
+    },
+    "bridgeid": "ECB5FAFFFE259802",
+    "datastoreversion": "131",
+    "dhcp": true,
+    "factorynew": false,
+    "gateway": "192.168.1.1",
+    "internetservices": {
+      "internet": "connected",
+      "remoteaccess": "connected",
+      "swupdate": "disconnected",
+      "time": "connected"
+    },
+    "ipaddress": "192.168.1.50",
+    "linkbutton": false,
+    "localtime": "2022-11-19T19:42:08.527986537Z",
+    "mac": "90:61:ae:21:8f:6d",
+    "modelid": "BSB001",
+    "name": "MQTT2hue",
+    "netmask": "255.255.255.0",
+    "portalconnection": "disconnected",
+    "portalservices": true,
+    "portalstate": {
+      "communication": "disconnected",
+      "incoming": false,
+      "outgoing": false,
+      "signedon": false
+    },
+    "proxyaddress": "none",
+    "proxyport": 0,
+    "replacesbridgeid": null,
+    "starterkitid": "",
+    "swupdate": {
+      "checkforupdate": false,
+      "devicetypes": {
+        "bridge": false,
+        "lights": [],
+        "sensors": []
+      },
+      "notify": true,
+      "text": "",
+      "updatestate": 0,
+      "url": ""
+    },
+    "swupdate2": {
+      "autoinstall": {
+        "on": true,
+        "updatetime": "03:00:00"
+      },
+      "bridge": {
+        "lastinstall": "2022-11-19T19:42:08.527986537Z",
+        "state": "noupdates"
+      },
+      "checkforupdate": false,
+      "lastchange": "2022-11-19T19:42:08.527986537Z",
+      "state": "noupdates"
+    },
+    "swversion": "1953188020",
+    "timezone": "Europe/Stockholm",
+    "whitelist": [],
+    "zigbeechannel": 15
+  },
+  "groups": {
+    "1": {
+      "action": {
+        "alert": "select",
+        "bri": 219,
+        "colormode": "ct",
+        "effect": [],
+        "mode": "homeautomation",
+        "on": true,
+        "reachable": true
+      },
+      "lights": [
+        "1"
+      ],
+      "name": "Living Room Upstairs",
+      "recycle": false,
+      "sensors": [],
+      "state": {
+        "all_on": true,
+        "any_on": true
+      },
+      "type": "Room"
+    }
+  },
+  "lights": {
+    "1": {
+      "capabilities": {
+        "certified": false,
+        "control": {
+          "colorgamuttype": "other",
+          "tag": "fullcolor"
+        }
+      },
+      "config": {
+        "archetype": "sultanbulb",
+        "direction": "omnidirectional",
+        "function": "functional",
+        "startup": {
+          "configured": true,
+          "mode": "safety"
+        }
+      },
+      "manufacturername": "Philips",
+      "modelid": "Hue white and color ambiance LightStrip plus (8718699703424)",
+      "name": "TV Backlight",
+      "productname": "TV Backlight",
+      "state": {
+        "alert": "select",
+        "bri": 219,
+        "colormode": "ct",
+        "effect": [],
+        "mode": "homeautomation",
+        "on": true,
+        "reachable": true
+      },
+      "swupdate": {
+        "lastinstall": "1858-11-17T00:00:00Z",
+        "state": "noupdates"
+      },
+      "swversion": "1.93.11",
+      "type": "Extended color light",
+      "uniqueid": "0x001788010bf4769e_light_zigbee2mqtt"
+    }
+  },
+  "resoucelinks": {},
+  "rules": {},
+  "scenes": {},
+  "schedules": {},
+  "sensors": {}
+}
+#+end_src
+
+
+- Does not update state correctly:
+
+<<< zigbee2mqtt/TV Backlight:
+
+#+begin_src js
+{
+  "brightness": 21,
+  "color": {
+    "h": 27,
+    "hue": 27,
+    "s": 92,
+    "saturation": 92,
+    "x": 0.5097,
+    "y": 0.415
+  },
+  "color_mode": "color_temp",
+  "color_temp": 463,
+  "color_temp_startup": 500,
+  "linkquality": 36,
+  "state": "ON",
+  "update": {
+    "state": "idle"
+  },
+  "update_available": false
+}
+#+end_src
