@@ -32,8 +32,8 @@ blankAppState = AppState mempty mempty mempty mempty mempty
 
 data AppState = AppState
   {lights :: Map IEEEAddress MQTTAPI.LightConfig
-  ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state
-  ,lightIds :: Map IEEEAddress Int
+  ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state. Lights and groups here.
+  ,lightIds :: Map IEEEAddress Int -- give hue v1 id here
   ,zigDevices :: Map IEEEAddress ZigDevice
   ,groups :: Map Int MQTTAPI.GroupConfig
   } deriving Show

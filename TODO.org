@@ -1,11 +1,15 @@
 - Missing group icon
+- When applying group action (applyGroupAction), make an update
+  according to capabilities of individual lights.
+- Upon group state query, compute average between lights
+- Proper user management
+  - accept a message on mqtt topic (maybe huebridge/virtualbutton ) to press the button
+  - where to store user db? /var/lib/mqtt2hue.yaml ?
+- support Event api?
 
-- When applying group action (applyGroupAction), make an update according to capabilities of individual lights
 
-- Get group state from lightStates if it exists
-  
-- Compute average group state?
-
-
-
+DON'T:
+- Get group state from lightStates if it exists (ie. a proper group
+  set state from MQTT was sent to the group topic)
+  - problem: not all lights in the group may support the state.
 
