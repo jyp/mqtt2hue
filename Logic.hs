@@ -60,16 +60,17 @@ convertAction HueAPI.Action{..} = MQTTAPI.Action {
   ,color_temp = ct
   }
 
-applyLightActionOnState ::  MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
-applyLightActionOnState MQTTAPI.Action {..} =
-  maybe id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
-  maybe id (\b s -> s {brightness=Just b} :: MQTTAPI.LightState) brightness .
-  maybe id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color .
-  maybe id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp
+applyLightActionOnState ::  [MQTTAPI.ColorMode] -> MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
+applyLightActionOnState supported MQTTAPI.Action {..} =
+                         maybe id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
+                         maybe id (\b s -> s {brightness=Just b} :: MQTTAPI.LightState) brightness .
+  cMode XYMode          (maybe id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color) .
+  cMode TemperatureMode (maybe id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp)
+  where cMode m f = if m `elem` supported then f else id
 
 applyLightAction :: MQTTAPI.Action -> MQTTAPI.LightConfig -> AppState -> AppState
-applyLightAction a MQTTAPI.LightConfig{state_topic} st
-  = st {lightStates = Map.alter (fmap (applyLightActionOnState a)) state_topic (lightStates st)}
+applyLightAction a MQTTAPI.LightConfig{state_topic,supported_color_modes} st
+  = st {lightStates = Map.alter (fmap (applyLightActionOnState supported_color_modes a)) state_topic (lightStates st)}
 
 applyGroupAction :: MQTTAPI.Action -> MQTTAPI.GroupConfig -> AppState -> AppState
 applyGroupAction a g st = Prelude.foldr (applyLightAction a) st (groupLights st g)
