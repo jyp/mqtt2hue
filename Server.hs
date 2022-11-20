@@ -35,6 +35,8 @@ import Control.Concurrent.MVar
 import Control.Concurrent
 import qualified Servant.Types.SourceT as S
 import Data.Text.Encoding
+import Data.Hashable
+import qualified Data.Yaml
 
 import Servant
 import Logic
@@ -45,7 +47,10 @@ import MQTTAPI
 
 data ServerState = ServerState {serverConfig :: ServerConfig
                                ,appState :: MVar AppState
-                               ,mqttState :: MVar MQTTClient}
+                               ,mqttState :: MVar MQTTClient
+                               ,database :: MVar DataBase
+                               ,buttonPressed :: MVar Word128
+                               }
 
 type HueHandler = ReaderT ServerState Handler
 
@@ -81,9 +86,19 @@ bridgeConfig _userId = do
   bridgePublicConfig
 
 createUser :: CreateUser -> HueHandler [CreatedUser]
-createUser CreateUser {..} = do
-  liftIO (Text.putStrLn ("user-creation requested for " <> devicetype))
-  return [CreatedUser $ UserName "83b7780291a6ceffbe0bd049104df"] -- FIXME
+createUser CreateUser {devicetype=applicationIdentifier} = do
+  liftIO (Text.putStrLn ("user-creation requested for " <> applicationIdentifier))
+  but <- asks buttonPressed
+  dbVar <- asks database
+  dbFname <- asks (usersFilePath . serverConfig)
+  applicationKey <- liftIO $ (Text.pack . show <$> readMVar but)
+  creationDate <- liftIO getCurrentTime
+  liftIO $ modifyMVarMasked_ dbVar $
+    \users -> do
+      let db = UserEntry{..}:users
+      Data.Yaml.encodeFile dbFname db
+      return db
+  return [CreatedUser $ UserName applicationKey] -- FIXME
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
@@ -230,8 +245,9 @@ hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
         funToHandler f = runReaderT f st
 
 
+
 mqttThread :: ServerState -> IO ()
-mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
+mqttThread (ServerState (serverConf@ServerConfig {..})  st mv _ butMv) = mdo
   let (Just uri) = parseURI mqttBroker
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   putMVar mv mc
@@ -240,7 +256,8 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
                           ["homeassistant/light/+/light/config",
                            "zigbee2mqtt/bridge/devices",
                            "zigbee2mqtt/bridge/groups",
-                           "zigbee2mqtt/+"])
+                           "zigbee2mqtt/+",
+                           "mqtt2hue/pushbutton"])
                       []
   waitForClient mc   -- wait for the the client to disconnect
 
@@ -250,6 +267,19 @@ mqttThread (ServerState (ServerConfig {..})  st mv) = mdo
       Text.putStrLn ("<<< " <> topic <> ": " <> decodeUtf8 msg')
       -- Data.ByteString.Lazy.Char8.putStrLn msg
       case () of
+        () | topic == "mqtt2hue/pushbutton" -> do
+             now <- getCurrentTime
+             b <- tryPutMVar butMv (Word128 (fromIntegral (hash now)) (fromIntegral (hash serverConf)))
+             if b
+               then putStrLn "XXX Button pushed:" 
+               else putStrLn "XXX Button stuck!"
+             _ <- forkIO $ do
+               threadDelay (1000*1000*30) -- 30 seconds
+               c <- tryTakeMVar butMv
+               case c of
+                 Nothing -> putStrLn "XXX Button bounce"
+                 Just _ -> putStrLn "XXX Button released"
+             return ()
         () | "homeassistant/light" `Text.isPrefixOf` topic,
              Just l <- decode msg  -> do
            modifyMVarMasked_ st (return . updateLightConfig l)

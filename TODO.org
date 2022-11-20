@@ -1,9 +1,6 @@
 - Upon group state query, compute average between lights
-- Proper user management
-  - accept a message on mqtt topic (maybe huebridge/virtualbutton ) to press the button
-  - where to store user db? /var/lib/mqtt2hue.yaml ?
 - support Event api?
-
+- read configuration
 
 DON'T:
 - Get group state from lightStates if it exists (ie. a proper group

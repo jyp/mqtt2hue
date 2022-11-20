@@ -13,7 +13,7 @@ let hpDef = haskellPackages.override{
         # typedflow = self.callPackage ./typedflow.nix {};
       };};
     hp = hpDef;
-    ghc = hp.ghcWithPackages (ps: with ps; ([ cabal-install servant servant-server aeson warp-tls lucid wai-enforce-https ]));
+    ghc = hp.ghcWithPackages (ps: with ps; ([ cabal-install servant servant-server aeson warp-tls lucid wai-enforce-https hashable ]));
 in pkgs.stdenv.mkDerivation {
   name = "my-env-0";
   buildInputs = [ glibcLocales ghc ];

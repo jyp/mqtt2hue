@@ -40,6 +40,8 @@ executable mqtt2hue
   build-depends: template-haskell
   build-depends: network-uri
   build-depends: text
+  build-depends: yaml
+  build-depends: hashable
   main-is: Main.hs
   ghc-options: -threaded -rtsopts
   other-modules:
