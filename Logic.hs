@@ -163,10 +163,10 @@ blankLightState = MQTTAPI.LightState
   ,color = Nothing
   ,color_mode = Nothing
   ,color_temp = Nothing
-  ,linkquality = 0
+  ,linkquality = Nothing
   ,state = OFF
-  ,update = UpdateState {state = MQTTAPI.Idle}
-  ,update_available = False
+  ,update = Nothing
+  ,update_available = Nothing
   }
 
 getLightState :: AppState -> MQTTAPI.LightConfig -> MQTTAPI.LightState

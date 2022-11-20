@@ -77,14 +77,17 @@ data LightState = LightState
   { brightness :: Maybe Int,
     color :: Maybe ColorXY,
     color_mode :: Maybe ColorMode,
-    color_temp:: Maybe Int,
-    linkquality:: Int,
+    color_temp :: Maybe Int,
+    linkquality :: Maybe Int,
     state :: OnOff,
-    update:: UpdateState,
-    update_available:: Bool
+    update:: Maybe UpdateState,
+    update_available:: Maybe Bool
   } deriving (Generic,Show)
 instance FromJSON LightState
 instance ToJSON LightState
+
+-- >>> decodeTestFile "examples/MQTT/ls0.json" :: IO (Maybe LightState)
+-- Just (LightState {brightness = Just 243, color = Just (ColorXY {x = 0.3612283, y = 0.113979965}), color_mode = Just XYMode, color_temp = Just 153, linkquality = Nothing, state = ON, update = Nothing, update_available = Nothing})
 
 data Action = Action
   { brightness :: Maybe Int,

@@ -1,11 +1,9 @@
 - Missing group icon
 
-- Handle:
-  - <<< zigbee2mqtt/Living Room Upstairs: {"brightness":85,"color":{"h":27,"hue":27,"s":92,"saturation":92,"x":0.5046,"y":0.4152},"color_mode":"color_temp","color_temp":452,"state":"ON"}
-  - (Unknown kind of message at the moment)
-
 - When applying group action (applyGroupAction), make an update according to capabilities of individual lights
 
+- Get group state from lightStates if it exists
+  
 - Compute average group state?
 
 
