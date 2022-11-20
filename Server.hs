@@ -187,7 +187,7 @@ groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
 groupAction _userId groupId a0 = do
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show groupId) <> " " <> Text.pack (show a0))
   (t,a) <- withAppState (handleGroupAction groupId a0)
-  let Just t' = mkTopic (t <> "/set") 
+  let Just t' = mkTopic t
   appPublish t' a
   return "Updated."
 
