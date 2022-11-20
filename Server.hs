@@ -98,7 +98,7 @@ createUser CreateUser {devicetype=applicationIdentifier} = do
       let db = UserEntry{..}:users
       Data.Yaml.encodeFile dbFname db
       return db
-  return [CreatedUser $ UserName applicationKey] -- FIXME
+  return [CreatedUser $ UserName applicationKey]
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do

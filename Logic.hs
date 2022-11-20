@@ -16,7 +16,6 @@ module Logic ( AppState(..),
               -- MQTT side
               blankAppState,  updateLightConfig, updateLightState, 
              ) where
-
 import Data.Maybe
 import MQTTAPI
 import HueAPI
@@ -195,6 +194,41 @@ allHueLights st@AppState{..} = Map.fromList
   , let Just i = Data.Map.lookup uid lightIds
   ]
 
+class Avg a where
+  (+.) :: a -> a -> a
+  divide :: a -> Int -> a
+instance Avg Int where
+  (+.) = (+)
+  divide = div
+instance Avg ColorXY where
+  ColorXY x1 y1 +. ColorXY x2 y2 = ColorXY (x1+x2) (y1+y2)
+  divide (ColorXY x y) n = ColorXY (x / fromIntegral n) (y / fromIntegral n)
+  
+average :: Avg a => [a] -> Maybe a
+average [] = Nothing
+average xs = Just (Prelude.foldr1 (+.) xs `divide` length xs)
+
+orState :: OnOff -> OnOff -> OnOff
+orState ON _ = ON
+orState OFF x = x
+
+combineLightStates :: [MQTTAPI.LightState] -> MQTTAPI.LightState
+combineLightStates ls = MQTTAPI.LightState
+  {brightness = average $ catMaybes [brightness | MQTTAPI.LightState{brightness} <- ls]
+  ,color = average $ catMaybes [color | MQTTAPI.LightState{color} <- ls]
+  ,color_mode = case catMaybes [color_mode | MQTTAPI.LightState{color_mode} <- ls] of
+      [] -> Nothing
+      xs -> Just  $ if all (== XYMode) xs
+                    then XYMode
+                    else TemperatureMode
+  ,color_temp = average $ catMaybes [color_temp | MQTTAPI.LightState{..} <- ls]
+  ,linkquality = Nothing
+  ,state = Prelude.foldr orState OFF ([state | MQTTAPI.LightState{..} <- ls])
+  ,update = Nothing
+  ,update_available = Nothing
+  }
+
+
 mkGroupWithLights :: AppState -> GroupType -> Text -> Map IEEEAddress MQTTAPI.LightConfig -> Group
 mkGroupWithLights st@AppState{..} _type name ls
   = Group {lights = [pack (show i)
@@ -214,7 +248,7 @@ mkGroupWithLights st@AppState{..} _type name ls
               _ | "attic" `isInfixOf` nm -> Just Attic
               _ | "living" `isInfixOf` nm -> Just LivingRoom
               _ -> Nothing
-          ,action = lightStateMqtt2Hue (head (groupLightStates++[blankLightState])) -- FIXME
+          ,action = lightStateMqtt2Hue (combineLightStates groupLightStates)
           ,..}
   where ons = [state == ON | MQTTAPI.LightState{state} <- groupLightStates  ]
         groupLightStates = getLightState st . snd <$> toList ls
