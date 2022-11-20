@@ -313,6 +313,27 @@ data WhiteListEntry = WhiteListEntry
 instance ToJSON WhiteListEntry
 type TimeStamp = UTCTime
 
+data SceneType = GroupScene | LightScene deriving (Generic, Eq, Show)
+instance ToJSON SceneType
+data SceneAppData = SceneAppData
+  {version :: Int
+  ,_data :: Text} deriving (Generic, Eq, Show)
+
+data Scene = Scene
+  {
+    name :: Text,
+    _type :: SceneType,
+    group :: Maybe Text, -- nothing for lightscene
+    lights :: [Text],
+    owner :: Text,
+    recycle :: Bool,
+    locked :: Bool,
+    appdata :: Maybe SceneAppData,
+    picture :: Text,
+    lastupdated :: TimeStamp,
+    version :: Int
+  } deriving (Generic, Eq, Show)
+
 data Dummy = Dummy deriving (Eq, Show, Generic)
 instance ToJSON Dummy
 data Everything = Everything
@@ -320,7 +341,7 @@ data Everything = Everything
   ,groups :: Map Int Group
   ,config :: Config
   ,schedules :: Map Int Dummy
-  ,scenes :: Map Int Dummy
+  ,scenes :: Map Text Scene
   ,rules :: Map Int Dummy
   ,sensors :: Map Int Dummy
   ,resoucelinks :: Map Int Dummy
@@ -328,6 +349,8 @@ data Everything = Everything
   deriving (Eq, Show, Generic)
 
 
+$(myDeriveToJSON ''SceneAppData)
+$(myDeriveToJSON ''Scene)
 instance ToJSON GroupType
 instance ToJSON GroupState
 $(myDeriveToJSON ''Control)
