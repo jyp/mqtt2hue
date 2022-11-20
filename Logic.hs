@@ -76,7 +76,7 @@ applyGroupAction a g st = Prelude.foldr (applyLightAction a) st (groupLights st 
 
 handleLightAction :: Int -> HueAPI.Action -> AppState -> (AppState, (Text, MQTTAPI.Action))
 handleLightAction hueLightId a0 st0 = (st, (t,a)) 
- where t = state_topic l <> "/set"
+ where t = lightSetTopic l
        a = convertAction a0
        l = hueSmallIdToLightConfig st0 hueLightId
        st = applyLightAction a l st0
@@ -84,16 +84,28 @@ handleLightAction hueLightId a0 st0 = (st, (t,a))
        -- optimistically updated state. The real state update will
        -- occur later when MQTT sends back the true updated light state.
 
-handleGroupAction :: Int -> HueAPI.Action -> AppState -> Maybe (AppState, (Text, MQTTAPI.Action))
+lightSetTopic :: MQTTAPI.LightConfig -> Text
+lightSetTopic l = state_topic l <> "/set"
+
+groupSetTopic :: GroupConfig -> Text
+groupSetTopic GroupConfig{friendly_name} = "zigbee2mqtt/" <> friendly_name  <> "/set"
+
+handleGroupAction :: Int -> HueAPI.Action -> AppState -> Maybe (AppState, [(Text, MQTTAPI.Action)])
+handleGroupAction 0 a0 st0@AppState{groups} = do
+  let g = group0 st0
+  let a = convertAction a0
+      st = applyGroupAction a g st0
+  -- there is no MQTT group for everything, so send a message to each group individually
+  return (st, [(groupSetTopic l,a) | (_,l)  <- assocs groups])
 handleGroupAction groupId a0 st0@AppState{groups} = do
-  g@GroupConfig{friendly_name} <- if groupId == 0 then Just (group0 st0) else Data.Map.lookup groupId groups
-  let t = "zigbee2mqtt/" <> friendly_name  <> "/set"
+  g <- Data.Map.lookup groupId groups
+  let t = groupSetTopic g
       a = convertAction a0
       st = applyGroupAction a g st0
        -- update the state so that immediate queries will get the
        -- optimistically updated state. The real state update will
        -- occur later when MQTT sends back the true updated light state.
-  return (st, (t,a))
+  return (st, [(t,a)])
 
             
 lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
