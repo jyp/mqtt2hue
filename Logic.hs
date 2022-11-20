@@ -22,7 +22,7 @@ import MQTTAPI
 import HueAPI
 import qualified Data.Map as Map
 import Data.Map
-import Data.Text (Text,splitOn,unpack,pack)
+import Data.Text (Text,splitOn,unpack,pack,isInfixOf,toCaseFold)
 import Data.Time.Clock
 import Text.Read (readMaybe)
 import MyAeson(Choice(..))
@@ -203,11 +203,21 @@ mkGroupWithLights st@AppState{..} _type name ls
           ,state = GroupState {all_on = and ons
                               ,any_on = or ons}
           ,recycle = False
-          ,_class = Nothing
+          ,_class = case () of
+              _ | "office" `isInfixOf` nm -> Just Office
+              _ | "bedroom" `isInfixOf` nm -> Just Bedroom
+              _ | "garage" `isInfixOf` nm -> Just Garage
+              _ | "hallway" `isInfixOf` nm -> Just Hallway
+              _ | "wardrobe" `isInfixOf` nm -> Just Hallway
+              _ | "kitchen" `isInfixOf` nm -> Just Kitchen
+              _ | "attic" `isInfixOf` nm -> Just Attic
+              _ | "living" `isInfixOf` nm -> Just LivingRoom
+              _ -> Nothing
           ,action = lightStateMqtt2Hue (head (groupLightStates++[blankLightState])) -- FIXME
           ,..}
   where ons = [state == ON | MQTTAPI.LightState{state} <- groupLightStates  ]
         groupLightStates = getLightState st . snd <$> toList ls
+        nm = toCaseFold name
   
 group0 :: AppState -> MQTTAPI.GroupConfig
 group0 AppState{lights} = GroupConfig 

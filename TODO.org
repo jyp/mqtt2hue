@@ -1,4 +1,3 @@
-- Missing group icon
 - When applying group action (applyGroupAction), make an update
   according to capabilities of individual lights.
 - Upon group state query, compute average between lights

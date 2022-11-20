@@ -28,6 +28,7 @@ import Data.Map
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Data.Text
+import Data.String
 
 type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUser]
            :<|>  "api" :>                            "config" :> Get '[JSON] Config
@@ -196,7 +197,7 @@ data Group = Group
   , _type :: GroupType
   , state :: GroupState
   , recycle ::  Bool
-  , _class :: Maybe String
+  , _class :: Maybe Class
   , action :: LightState
   -- , precence :: Presence
   -- , lightlevel :: LightLevel
@@ -206,6 +207,10 @@ data Group = Group
 
 data Class = Office | Bedroom | Garage | LivingRoom | Hallway | Kitchen | Attic
   deriving (Eq, Show, Generic)
+instance ToJSON Class where
+  toJSON = \case
+    LivingRoom -> "Living room"
+    c -> fromString (show c)
 data GroupType = Room | LightGroup
   deriving (Eq, Show, Generic)
 data GroupState = GroupState { all_on, any_on :: Bool}
