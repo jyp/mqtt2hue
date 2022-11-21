@@ -7,32 +7,18 @@
 
 import Server
 
-import Control.Monad.Except
-import Control.Monad.Reader
-import Data.Aeson
-import Data.ByteString (ByteString)
-import Data.List
-import Data.Maybe
-import Network.HTTP.Media ((//), (/:))
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Servant
-import System.Directory
-import Servant.Types.SourceT (source)
-import qualified Data.Aeson.Parser
-import Data.Time.Clock
-import Data.Time.LocalTime
 import           Network.Wai.Logger       (withStdoutLogger)
 import           Control.Concurrent                  (forkIO)
-import           Network.Wai                         (Application, responseLBS)
-import           Network.Wai.Handler.Warp            (defaultSettings, run,
-                                                      setPort)
+import           Network.Wai.Handler.Warp            (defaultSettings, setPort,setLogger,runSettings)
 import           Network.Wai.Handler.WarpTLS         (runTLS, tlsSettings)
 import Data.Yaml
 import Control.Concurrent.MVar
 
 import Logic
 import Types
+
+-- >>> readFile "/sys/class/net/wlp3s0/address"
+-- "90:61:ae:21:8f:6d\n"
 
 main :: IO ()
 main = do
