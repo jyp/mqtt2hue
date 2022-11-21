@@ -64,6 +64,7 @@ hueServerV1 =  createUser
         :<|> configuredGroups
         :<|> configuredGroup
         :<|> groupAction
+        :<|> configuredScenes
 
 hueServerV2 :: ServerT HueAPIV2.HueApiV2 HueHandler
 hueServerV2 = return (S.fromStepT s) -- FIXME: broken.
@@ -195,6 +196,9 @@ configuredLights _ = askingState allHueLights
 configuredGroups :: String -> HueHandler (Map Int Group)
 configuredGroups _ = askingState allHueGroups
 
+configuredScenes :: String -> HueHandler (Map Int Scene)
+configuredScenes userId = askingState allHueScenes
+
 configuredGroup :: String -> Int -> HueHandler Group
 configuredGroup _ i = withAppState (getHueGroup i)
 
@@ -214,7 +218,7 @@ appPublish t a = do
   liftIO (publish mc t (encode a) False)
 
 lightAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
-lightAction _userId lightId action = do
+lightAction userId lightId action = do
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
   (t,a) <- withAppState (Just . handleLightAction lightId action )
   let Just t' = mkTopic t
@@ -226,9 +230,9 @@ allConfig :: String -> HueHandler Everything
 allConfig userId = do
   lights <- configuredLights userId
   groups <- configuredGroups userId
+  scenes <- configuredScenes userId
   config <- bridgeConfig userId
   let schedules = mempty
-  let scenes = mempty
   let rules = mempty
   let sensors = mempty
   let resoucelinks = mempty
@@ -245,9 +249,8 @@ hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
         funToHandler f = runReaderT f st
 
 
-
 mqttThread :: ServerState -> IO ()
-mqttThread (ServerState (serverConf@ServerConfig {..})  st mv _ butMv) = mdo
+mqttThread (ServerState serverConf@ServerConfig {..} st mv _ butMv) = mdo
   let (Just uri) = parseURI mqttBroker
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   putMVar mv mc

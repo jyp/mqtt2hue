@@ -12,7 +12,7 @@
 
 module Logic ( AppState(..),
               --  hue side
-              allHueLights, allHueGroups, handleLightAction, handleGroupAction, getHueGroup,
+              allHueLights, allHueGroups, handleLightAction, handleGroupAction, getHueGroup, allHueScenes,
               -- MQTT side
               blankAppState,  updateLightConfig, updateLightState, 
              ) where
@@ -49,14 +49,17 @@ hueSmallIdToLightConfig AppState{..} smallId = do
       Just x -> x
   
 
-convertAction  :: HueAPI.Action -> MQTTAPI.Action
-convertAction HueAPI.Action{..} = MQTTAPI.Action {
+actionHue2Mqtt  :: HueAPI.Action -> MQTTAPI.Action
+actionHue2Mqtt HueAPI.Action{..} = MQTTAPI.Action {
   brightness = bri
-  ,color = (<$> xy) $ \case [x,y] -> ColorXY x y; _ -> error "convertAction: xy list wrong length"
+  ,color = (<$> xy) $ \case [x,y] -> ColorXY x y; _ -> error "actionHue2Mqtt: xy list wrong length"
   ,state = (<$> on) $ \case
      False -> OFF
      True -> ON
   ,color_temp = ct
+  ,scene_recall = (<$> scene) $ \sid -> case readMaybe (unpack sid) of
+      Nothing -> error ("scene id isn't a number: " ++ unpack sid)
+      Just mqttSid -> mqttSid
   }
 
 applyLightActionOnState ::  [MQTTAPI.ColorMode] -> MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
@@ -77,7 +80,7 @@ applyGroupAction a g st = Prelude.foldr (applyLightAction a) st (groupLights st 
 handleLightAction :: Int -> HueAPI.Action -> AppState -> (AppState, (Text, MQTTAPI.Action))
 handleLightAction hueLightId a0 st0 = (st, (t,a)) 
  where t = lightSetTopic l
-       a = convertAction a0
+       a = actionHue2Mqtt a0
        l = hueSmallIdToLightConfig st0 hueLightId
        st = applyLightAction a l st0
        -- update the state so that immediate queries will get the
@@ -93,14 +96,14 @@ groupSetTopic GroupConfig{friendly_name} = "zigbee2mqtt/" <> friendly_name  <> "
 handleGroupAction :: Int -> HueAPI.Action -> AppState -> Maybe (AppState, [(Text, MQTTAPI.Action)])
 handleGroupAction 0 a0 st0@AppState{groups} = do
   let g = group0 st0
-  let a = convertAction a0
+  let a = actionHue2Mqtt a0
       st = applyGroupAction a g st0
   -- there is no MQTT group for everything, so send a message to each group individually
   return (st, [(groupSetTopic l,a) | (_,l)  <- assocs groups])
 handleGroupAction groupId a0 st0@AppState{groups} = do
   g <- Data.Map.lookup groupId groups
   let t = groupSetTopic g
-      a = convertAction a0
+      a = actionHue2Mqtt a0
       st = applyGroupAction a g st0
        -- update the state so that immediate queries will get the
        -- optimistically updated state. The real state update will
@@ -125,11 +128,14 @@ lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,co
                       ,reachable = True -- FIXME -- linkquality ?
                       }
 
+zeroTime :: UTCTime
+zeroTime = UTCTime (toEnum 0) (toEnum 0)
+
 lightMqtt2Hue :: MQTTAPI.LightConfig -> HueAPI.LightState -> HueAPI.Light
 lightMqtt2Hue (MQTTAPI.LightConfig {device = Device {name=productname,..},..}) lightState
   = Light {state = lightState 
           ,swupdate = SwUpdate {state = NoUpdates
-                               ,lastinstall = UTCTime (toEnum 0) (toEnum 0) -- FIXME
+                               ,lastinstall = zeroTime -- FIXME
                                }
           ,_type = if XYMode `elem` supported_color_modes then
                      ExtendedColorLight else (if TemperatureMode `elem` supported_color_modes
@@ -188,11 +194,13 @@ enrichLightState cmodes ls@MQTTAPI.LightState{color,color_temp} =
          else color_temp}
 
 allHueLights :: AppState -> Map Int Light
-allHueLights st@AppState{..} = Map.fromList
-  [(i,lightMqtt2Hue cfg (lightStateMqtt2Hue (getLightState st cfg)))
-  | (uid,cfg) <- toList lights
-  , let Just i = Data.Map.lookup uid lightIds
-  ]
+allHueLights st@AppState{..} = lightsMqtt2Hue st (elems lights)
+
+lightsMqtt2Hue :: AppState -> [MQTTAPI.LightConfig] -> Map Int Light
+lightsMqtt2Hue st@AppState{..} ls
+  = Map.fromList [(i,lightMqtt2Hue l (lightStateMqtt2Hue (getLightState st l)))
+                 | l <- ls
+                 , let Just i = Data.Map.lookup (lightAddress l) lightIds]
 
 class Avg a where
   (+.) :: a -> a -> a
@@ -221,9 +229,9 @@ combineLightStates ls = MQTTAPI.LightState
       xs -> Just  $ if all (== XYMode) xs
                     then XYMode
                     else TemperatureMode
-  ,color_temp = average $ catMaybes [color_temp | MQTTAPI.LightState{..} <- ls]
+  ,color_temp = average $ catMaybes [color_temp | MQTTAPI.LightState{color_temp} <- ls]
   ,linkquality = Nothing
-  ,state = Prelude.foldr orState OFF ([state | MQTTAPI.LightState{..} <- ls])
+  ,state = Prelude.foldr orState OFF ([state | MQTTAPI.LightState{state} <- ls])
   ,update = Nothing
   ,update_available = Nothing
   }
@@ -303,3 +311,21 @@ allHueGroups :: AppState -> Map Int Group
 allHueGroups st@AppState{groups}
   = Map.fromList [ (_id,groupMqtt2Hue st g)
                  | (_id,g) <- Map.assocs groups]
+
+allHueScenes :: AppState -> Map Int Scene
+allHueScenes st@AppState{groups}
+  = Map.fromList
+  [ (sid, -- hue bridge uses a 16 character string. But this will do.
+     Scene{name = name
+          ,_type = GroupScene
+          ,group = Just (pack $ show gid)
+          ,lights = pack . show <$> Data.Map.keys (lightsMqtt2Hue st (groupLights st g))
+          ,owner = pack $ show $ gid
+          ,recycle = True
+          ,locked = True
+          ,appdata = Nothing
+          ,picture = ""
+          ,lastupdated = zeroTime
+          ,version = 2})
+  | (gid,g@GroupConfig{scenes})<- assocs groups
+  , SceneRef{_id=sid,name} <- scenes ]

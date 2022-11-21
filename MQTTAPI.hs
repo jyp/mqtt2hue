@@ -93,7 +93,8 @@ data Action = Action
   { brightness :: Maybe Int,
     color :: Maybe ColorXY,
     state :: Maybe OnOff,
-    color_temp :: Maybe Int
+    color_temp :: Maybe Int,
+    scene_recall :: Maybe Int
   } deriving (Generic, Show)
 
 data Status = Idle | Busy

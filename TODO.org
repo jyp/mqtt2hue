@@ -1,3 +1,4 @@
+- Verify user id
 - Supprt scenes
 - Upon group state query, compute average between lights
 - support Event api?
