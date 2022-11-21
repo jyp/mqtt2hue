@@ -30,16 +30,17 @@ import Data.Time.LocalTime
 import Data.Text
 import Data.String
 
-type HueApi =    "api" :> ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUser]
-           :<|>  "api" :>                            "config" :> Get '[JSON] Config
-           :<|>  "api" :> Capture "userid" String :>             Get '[JSON] Everything
-           :<|>  "api" :> Capture "userid" String :> "config" :> Get '[JSON] Config
-           :<|>  "api" :> Capture "userid" String :> "lights" :> Get '[JSON] (Map Int Light)
-           :<|>  "api" :> Capture "userid" String :> "lights" :> Capture "lightid" Int :> "state" :> ReqBody '[JSON] Action :> Put '[JSON] Text
-           :<|>  "api" :> Capture "userid" String :> "groups" :> Get '[JSON] (Map Int Group)
-           :<|>  "api" :> Capture "userid" String :> "groups" :> Capture "groupid" Int :> Get '[JSON] Group
-           :<|>  "api" :> Capture "userid" String :> "groups" :> Capture "groupid" Int :> "action" :> ReqBody '[JSON] Action :> Put '[JSON] Text
-           :<|>  "api" :> Capture "userid" String :> "scenes" :> Get '[JSON] (Map Int Scene)
+type HueApi =
+  "api" :> (     ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUser]
+           :<|>                           "config" :> Get '[JSON] Config
+           :<|>  Capture "userid" Text :>             Get '[JSON] Everything
+           :<|>  Capture "userid" Text :> "config" :> Get '[JSON] Config
+           :<|>  Capture "userid" Text :> "lights" :> Get '[JSON] (Map Int Light)
+           :<|>  Capture "userid" Text :> "lights" :> Capture "lightid" Int :> "state" :> ReqBody '[JSON] Action :> Put '[JSON] Text
+           :<|>  Capture "userid" Text :> "groups" :> Get '[JSON] (Map Int Group)
+           :<|>  Capture "userid" Text :> "groups" :> Capture "groupid" Int :> Get '[JSON] Group
+           :<|>  Capture "userid" Text :> "groups" :> Capture "groupid" Int :> "action" :> ReqBody '[JSON] Action :> Put '[JSON] Text
+           :<|>  Capture "userid" Text :> "scenes" :> Get '[JSON] (Map Int Scene))
 
 data CreatedUser = CreatedUser {success :: UserName}
   deriving (Eq, Show, Generic)

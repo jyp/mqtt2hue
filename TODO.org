@@ -1,8 +1,6 @@
-- Verify user id
-- Supprt scenes
-- Upon group state query, compute average between lights
+- Upon group state query, compute average between lights (?)
 - support Event api?
-- read configuration
+- read configuration from file or command line
 
 DON'T:
 - Get group state from lightStates if it exists (ie. a proper group

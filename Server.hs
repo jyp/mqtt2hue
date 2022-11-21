@@ -37,6 +37,7 @@ import qualified Servant.Types.SourceT as S
 import Data.Text.Encoding
 import Data.Hashable
 import qualified Data.Yaml
+import Data.Text (Text)
 
 import Servant
 import Logic
@@ -82,8 +83,9 @@ hueServer :: ServerT (HueApi :<|> HueAPIV2.HueApiV2) HueHandler
 hueServer = hueServerV1 :<|> hueServerV2
 
 
-bridgeConfig :: String -> HueHandler Config
-bridgeConfig _userId = do
+bridgeConfig :: Text -> HueHandler Config
+bridgeConfig userId = do
+  verifyUser userId
   bridgePublicConfig
 
 createUser :: CreateUser -> HueHandler [CreatedUser]
@@ -100,6 +102,14 @@ createUser CreateUser {devicetype=applicationIdentifier} = do
       Data.Yaml.encodeFile dbFname db
       return db
   return [CreatedUser $ UserName applicationKey]
+
+verifyUser :: Text -> HueHandler ()
+verifyUser userId = do
+  dbVar <- asks database
+  users <- liftIO $ readMVar dbVar
+  when (notElem userId (applicationKey <$> users)) $
+    throwError err300
+
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
@@ -190,20 +200,29 @@ withAppState f = do
     -- putStrLn $ "!!! " <> show st'
     
 
-configuredLights :: String -> HueHandler (Map Int Light)
-configuredLights _ = askingState allHueLights
+configuredLights :: Text -> HueHandler (Map Int Light)
+configuredLights userId = do
+  verifyUser userId
+  askingState allHueLights
 
-configuredGroups :: String -> HueHandler (Map Int Group)
-configuredGroups _ = askingState allHueGroups
+configuredGroups :: Text -> HueHandler (Map Int Group)
+configuredGroups userId = do
+  verifyUser userId
+  askingState allHueGroups
 
-configuredScenes :: String -> HueHandler (Map Int Scene)
-configuredScenes userId = askingState allHueScenes
+configuredScenes :: Text -> HueHandler (Map Int Scene)
+configuredScenes userId = do
+  verifyUser userId
+  askingState allHueScenes
 
-configuredGroup :: String -> Int -> HueHandler Group
-configuredGroup _ i = withAppState (getHueGroup i)
+configuredGroup :: Text -> Int -> HueHandler Group
+configuredGroup userId i = do
+  verifyUser userId
+  withAppState (getHueGroup i)
 
-groupAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
-groupAction _userId groupId a0 = do
+groupAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
+groupAction userId groupId a0 = do
+  verifyUser userId
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show groupId) <> " " <> Text.pack (show a0))
   as <- withAppState (handleGroupAction groupId a0)
   forM_ as $ \(t,a) -> do
@@ -217,8 +236,9 @@ appPublish t a = do
   mc <- liftIO . readMVar . mqttState =<< ask
   liftIO (publish mc t (encode a) False)
 
-lightAction :: String -> Int -> HueAPI.Action -> HueHandler Text.Text
+lightAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction userId lightId action = do
+  verifyUser userId
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
   (t,a) <- withAppState (Just . handleLightAction lightId action )
   let Just t' = mkTopic t
@@ -226,17 +246,19 @@ lightAction userId lightId action = do
   return "Updated."
 
 
-allConfig :: String -> HueHandler Everything
+allConfig :: Text -> HueHandler Everything
 allConfig userId = do
-  lights <- configuredLights userId
-  groups <- configuredGroups userId
-  scenes <- configuredScenes userId
-  config <- bridgeConfig userId
-  let schedules = mempty
-  let rules = mempty
-  let sensors = mempty
-  let resoucelinks = mempty
-  let e = Everything{..}
+  verifyUser userId
+  config <- bridgePublicConfig
+  e <- askingState (\st ->
+      let lights = allHueLights st
+          groups = allHueGroups st
+          scenes = allHueScenes st
+          schedules = mempty
+          rules = mempty
+          sensors = mempty
+          resoucelinks = mempty
+      in Everything {..})
   liftIO $ Text.Lazy.putStrLn ("]]] " <> encodeToLazyText e)
   return e
 
