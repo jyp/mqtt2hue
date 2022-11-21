@@ -255,7 +255,7 @@ mkGroupWithLights st@AppState{..} _type name ls
               _ | "kitchen" `isInfixOf` nm -> Just Kitchen
               _ | "attic" `isInfixOf` nm -> Just Attic
               _ | "living" `isInfixOf` nm -> Just LivingRoom
-              _ -> Nothing
+              _ -> Just Bedroom
           ,action = lightStateMqtt2Hue (combineLightStates groupLightStates)
           ,..}
   where ons = [state == ON | MQTTAPI.LightState{state} <- groupLightStates  ]
