@@ -1,9 +1,11 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 import Server
 
@@ -12,28 +14,25 @@ import           Control.Concurrent                  (forkIO)
 import           Network.Wai.Handler.Warp            (defaultSettings, setPort,setLogger,runSettings)
 import           Network.Wai.Handler.WarpTLS         (runTLS, tlsSettings)
 import Data.Yaml
+import Data.Text.IO as Text
+import Data.Text as Text
 import Control.Concurrent.MVar
 
 import Logic
 import Types
-
--- >>> readFile "/sys/class/net/wlp3s0/address"
--- "90:61:ae:21:8f:6d\n"
+import System.Environment
 
 main :: IO ()
 main = do
+  [cfgFileName] <- getArgs
+  cfg <- decodeFileThrow cfgFileName
   st <- newMVar blankAppState
   mv <- newEmptyMVar
   button <- newEmptyMVar
-  let cfg = ServerConfig { mac = "90:61:ae:21:8f:6d"
-                         , ipaddress = "192.168.1.50"
-                         , mqttBroker = "mqtt://huey:qwftyrsi@192.168.1.15"
-                         , netmask = "255.255.255.0"
-                         , usersFilePath = "users.yaml"
-                         , gateway = "192.168.1.1"
-                          }
+  mac <- Text.strip <$> Text.readFile ("/sys/class/net/" <> netInterface cfg <> "/address")
+  let netCfg = NetConfig {..} where ServerConfig{..} = cfg
   db <- newMVar =<< decodeFileThrow (usersFilePath cfg) 
-  let s = ServerState cfg st mv db button
+  let s = ServerState cfg netCfg st mv db button
   _ <- forkIO (mqttThread s)
   let app = hueApp s
   withStdoutLogger $ \aplogger -> do

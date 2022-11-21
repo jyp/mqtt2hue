@@ -19,12 +19,19 @@ import Numeric (showHex)
 import Data.Hashable
 import Data.Word
 
-data ServerConfig = ServerConfig { mac :: String,
+data ServerConfig = ServerConfig { netInterface :: String,
                                    usersFilePath :: String,
+                                   mqttBroker :: String,
                                    ipaddress,
-                                   mqttBroker,
                                    netmask,
-                                   gateway :: String } deriving Generic
+                                   gateway :: Text } deriving Generic
+
+instance FromJSON ServerConfig
+data NetConfig = NetConfig { mac,
+                             ipaddress,
+                             netmask,
+                             gateway :: Text } deriving Generic
+
 
 data UserEntry = UserEntry
   {applicationKey :: Text

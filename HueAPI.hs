@@ -158,9 +158,9 @@ data ColorMode = CT | XY
 
 data LightMode = HomeAutomation
   deriving (Eq, Show, Generic)
-data LightConfig = LightConfig { archetype :: String
-                               , function :: String
-                               , direction :: String
+data LightConfig = LightConfig { archetype :: Text
+                               , function :: Text
+                               , direction :: Text
                                , startup :: Startup}
   deriving (Eq, Show, Generic)
 data Startup = Startup { mode :: StartupMode, configured :: Bool}
@@ -220,25 +220,25 @@ data GroupState = GroupState { all_on, any_on :: Bool}
   deriving (Eq, Show, Generic)
 
 data Config = Config
-  { name :: String,
-    datastoreversion :: String,
-    swversion :: String,
-    bridgeid :: String,
-    mac :: String,
+  { name :: Text,
+    datastoreversion :: Text,
+    swversion :: Text,
+    bridgeid :: Text,
+    mac :: Text,
     factorynew :: Bool,
 
     zigbeechannel :: Int,
     dhcp :: Bool,
-    ipaddress :: String,
-    netmask :: String,
-    gateway :: String,
-    proxyaddress :: String,
+    ipaddress :: Text,
+    netmask :: Text,
+    gateway :: Text,
+    proxyaddress :: Text,
     proxyport :: Int,
     _UTC :: TimeStamp,
     localtime :: TimeStamp,
-    timezone :: String,
-    modelid :: String,
-    apiversion :: String,
+    timezone :: Text,
+    modelid :: Text,
+    apiversion :: Text,
     swupdate :: CfgUpdate1,
     swupdate2 :: CfgUpdate2 ,
     linkbutton :: Bool,
@@ -248,7 +248,7 @@ data Config = Config
     internetservices :: InternetServices,
     replacesbridgeid :: Null,
     backup :: Backup,
-    starterkitid :: String,
+    starterkitid :: Text,
     whitelist :: [WhiteListEntry]
   } deriving (Eq, Show, Generic)
 

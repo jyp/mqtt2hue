@@ -47,6 +47,7 @@ import HueAPIV2
 import MQTTAPI
 
 data ServerState = ServerState {serverConfig :: ServerConfig
+                               ,netConfig :: NetConfig
                                ,appState :: MVar AppState
                                ,mqttState :: MVar MQTTClient
                                ,database :: MVar DataBase
@@ -113,7 +114,7 @@ verifyUser userId = do
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
- ServerConfig {..} <- askConfig
+ NetConfig {..} <- askConfig
  now <- liftIO getCurrentTime
  return $ Config
   {name = "MQTT2hue" -- "Philips Hue"
@@ -177,8 +178,8 @@ bridgePublicConfig = do
 askApp :: HueHandler AppState
 askApp = liftIO . readMVar . appState =<< ask
 
-askConfig :: HueHandler ServerConfig
-askConfig = asks serverConfig
+askConfig :: HueHandler NetConfig
+askConfig = asks netConfig
 
 askingState :: ToJSON a => (AppState -> a) -> HueHandler a
 askingState f = do
@@ -272,7 +273,7 @@ hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
 
 
 mqttThread :: ServerState -> IO ()
-mqttThread (ServerState serverConf@ServerConfig {..} st mv _ butMv) = mdo
+mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv) = mdo
   let (Just uri) = parseURI mqttBroker
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   putMVar mv mc

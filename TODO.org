@@ -1,6 +1,6 @@
+- Wait a moment (so that mqtt has a chance to update its state and inform us back) before answering hue requests.
 - Upon group state query, compute average between lights (?)
 - support Event api?
-- read configuration from file or command line
 
 DON'T:
 - Get group state from lightStates if it exists (ie. a proper group
