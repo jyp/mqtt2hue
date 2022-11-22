@@ -12,11 +12,11 @@
 
 module Logic ( AppState(..),
               --  hue side
-              allHueLights, allHueGroups, handleLightAction, handleGroupAction, getHueGroup, allHueScenes,
+              allHueLights, allHueGroups, getHueGroup, allHueScenes,
+              translateGroupAction, groupSetTopic, groupNotifyTopic,
+              translateLightAction, lightSetTopic, lightNotifyTopic,
               -- MQTT side
               blankAppState,  updateLightConfig, updateLightState,
-              translateGroupAction, groupSetTopic, groupNotifyTopic,
-              translateLightAction, lightSetTopic, lightNotifyTopic
              ) where
 import Data.Maybe
 import MQTTAPI
@@ -64,31 +64,6 @@ actionHue2Mqtt HueAPI.Action{..} = MQTTAPI.Action {
       Just mqttSid -> mqttSid
   }
 
-applyLightActionOnState ::  [MQTTAPI.ColorMode] -> MQTTAPI.Action -> MQTTAPI.LightState -> MQTTAPI.LightState
-applyLightActionOnState supported MQTTAPI.Action {..} =
-                         maybe id (\b s -> s {state=b} :: MQTTAPI.LightState) state .
-                         maybe id (\b s -> s {brightness=Just b} :: MQTTAPI.LightState) brightness .
-  cMode XYMode          (maybe id (\b s -> s {color=Just b,color_mode=Just XYMode} :: MQTTAPI.LightState) color) .
-  cMode TemperatureMode (maybe id (\b s -> s {color_temp=Just b,color_mode=Just TemperatureMode} :: MQTTAPI.LightState) color_temp)
-  where cMode m f = if m `elem` supported then f else id
-
-applyLightAction :: MQTTAPI.Action -> MQTTAPI.LightConfig -> AppState -> AppState
-applyLightAction a MQTTAPI.LightConfig{state_topic,supported_color_modes} st
-  = st {lightStates = Map.alter (fmap (applyLightActionOnState supported_color_modes a)) state_topic (lightStates st)}
-
-applyGroupAction :: MQTTAPI.Action -> MQTTAPI.GroupConfig -> AppState -> AppState
-applyGroupAction a g st = Prelude.foldr (applyLightAction a) st (groupLights st g)
-
-handleLightAction :: Int -> HueAPI.Action -> AppState -> (AppState, (Text, MQTTAPI.Action))
-handleLightAction hueLightId a0 st0 = (st, (t,a)) 
- where t = lightSetTopic l
-       a = actionHue2Mqtt a0
-       l = hueSmallIdToLightConfig st0 hueLightId
-       st = applyLightAction a l st0
-       -- update the state so that immediate queries will get the
-       -- optimistically updated state. The real state update will
-       -- occur later when MQTT sends back the true updated light state.
-
 translateLightAction :: Int -> HueAPI.Action -> AppState -> (MQTTAPI.LightConfig, MQTTAPI.Action)
 translateLightAction hueLightId a0 st0 = (l,a) 
  where a = actionHue2Mqtt a0
@@ -108,24 +83,6 @@ groupNotifyTopic GroupConfig{friendly_name} = "zigbee2mqtt/" <> friendly_name
 
 groupSetTopic :: GroupConfig -> Text
 groupSetTopic g = groupNotifyTopic g  <> "/set"
-
-
-handleGroupAction :: Int -> HueAPI.Action -> AppState -> Maybe (AppState, [(Text, MQTTAPI.Action)])
-handleGroupAction 0 a0 st0@AppState{groups} = do
-  let g = group0 st0
-  let a = actionHue2Mqtt a0
-      st = applyGroupAction a g st0
-  -- there is no MQTT group for everything, so send a message to each group individually
-  return (st, [(groupSetTopic l,a) | (_,l)  <- assocs groups])
-handleGroupAction groupId a0 st0@AppState{groups} = do
-  g <- Data.Map.lookup groupId groups
-  let t = groupSetTopic g
-      a = actionHue2Mqtt a0
-      st = applyGroupAction a g st0
-       -- update the state so that immediate queries will get the
-       -- optimistically updated state. The real state update will
-       -- occur later when MQTT sends back the true updated light state.
-  return (st, [(t,a)])
 
 translateGroupAction  :: Int -> HueAPI.Action -> AppState -> Maybe [(MQTTAPI.GroupConfig, MQTTAPI.Action)]
 translateGroupAction 0 a0 AppState{groups} = do
