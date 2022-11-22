@@ -52,3 +52,4 @@ executable mqtt2hue
    HueAPIV2
    MQTTAPI
    MyAeson
+   Semaphores

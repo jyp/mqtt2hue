@@ -45,6 +45,7 @@ import Types
 import HueAPI
 import HueAPIV2
 import MQTTAPI
+import Semaphores
 
 data ServerState = ServerState {serverConfig :: ServerConfig
                                ,netConfig :: NetConfig
@@ -52,6 +53,7 @@ data ServerState = ServerState {serverConfig :: ServerConfig
                                ,mqttState :: MVar MQTTClient
                                ,database :: MVar DataBase
                                ,buttonPressed :: MVar Word128
+                               ,serverSemaphores :: MultiSem Text
                                }
 
 type HueHandler = ReaderT ServerState Handler
@@ -181,7 +183,7 @@ askApp = liftIO . readMVar . appState =<< ask
 askConfig :: HueHandler NetConfig
 askConfig = asks netConfig
 
-askingState :: ToJSON a => (AppState -> a) -> HueHandler a
+askingState :: (AppState -> a) -> HueHandler a
 askingState f = do
   st <- askApp
   let x = f st
@@ -225,25 +227,41 @@ groupAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 groupAction userId groupId a0 = do
   verifyUser userId
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show groupId) <> " " <> Text.pack (show a0))
-  as <- withAppState (handleGroupAction groupId a0)
-  forM_ as $ \(t,a) -> do
-    let Just t' = mkTopic t
-    appPublish t' a
-  return "Updated."
+  as0 <- askingState (translateGroupAction groupId a0)
+  semas <- asks serverSemaphores
+  case as0 of
+    Nothing -> throwError err400
+    Just as -> do
+      mc <- liftIO . readMVar . mqttState =<< ask
+      _ <- liftIO $ forkIO $ forM_ as $ \(g,a) -> do
+        let Just t' = mkTopic (groupSetTopic g)
+        appPublish' mc t' a
+      liftIO $ waitForSemaphoresAtMost 1000000 [groupNotifyTopic g | (g,_) <- as] semas
+      -- try to wait until MQTT has updated the stuff
+      return "Updated."
 
 appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
 appPublish t a = do
-  liftIO (Text.Lazy.putStrLn (">>> " <> Text.Lazy.fromStrict (unTopic t) <> ": " <> encodeToLazyText a))
   mc <- liftIO . readMVar . mqttState =<< ask
-  liftIO (publish mc t (encode a) False)
+  liftIO (appPublish' mc t a)
+
+appPublish' :: (ToJSON a) => MQTTClient -> Topic -> a -> IO ()
+appPublish' mc t a = do
+  Text.Lazy.putStrLn (">>> " <> Text.Lazy.fromStrict (unTopic t) <> ": " <> encodeToLazyText a)
+  publish mc t (encode a) False
 
 lightAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction userId lightId action = do
   verifyUser userId
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
-  (t,a) <- withAppState (Just . handleLightAction lightId action )
-  let Just t' = mkTopic t
+  (l,a) <- askingState (translateLightAction lightId action )
+  let Just t' = mkTopic (lightSetTopic l)
   appPublish t' a
+  semas <- asks serverSemaphores
+  -- the client will ask for states immediately upon recieving
+  -- response. But we have not gotten the update from mqtt yet.
+  -- So wait for such updates (a bit) before returning.
+  liftIO $ waitForSemaphoreAtMost 1000000 (lightNotifyTopic l) semas
   return "Updated."
 
 
@@ -273,7 +291,7 @@ hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
 
 
 mqttThread :: ServerState -> IO ()
-mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv) = mdo
+mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
   let (Just uri) = parseURI mqttBroker
   mc <- connectURI mqttConfig{_msgCB=SimpleCallback (msgReceived mc)} uri
   putMVar mv mc
@@ -316,6 +334,7 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv) = mdo
              Just (l::MQTTAPI.LightState) <- decode msg -> do
           modifyMVarMasked_ st (return . updateLightState topic l)
           withMVar st $ \AppState{lightStates} -> Text.putStrLn ("!!!" <> Text.pack (show lightStates))
+          signalSemaphore topic semas
         () | topic == "zigbee2mqtt/bridge/devices",
              Just ds <- decode msg -> do
           modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address,d) | d@ZigDevice{ieee_address} <- ds] }))

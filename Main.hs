@@ -29,10 +29,11 @@ main = do
   st <- newMVar blankAppState
   mv <- newEmptyMVar
   button <- newEmptyMVar
+  semas <- newMVar mempty
   mac <- Text.strip <$> Text.readFile ("/sys/class/net/" <> netInterface cfg <> "/address")
   let netCfg = NetConfig {..} where ServerConfig{..} = cfg
   db <- newMVar =<< decodeFileThrow (usersFilePath cfg) 
-  let s = ServerState cfg netCfg st mv db button
+  let s = ServerState cfg netCfg st mv db button semas
   _ <- forkIO (mqttThread s)
   let app = hueApp s
   withStdoutLogger $ \aplogger -> do
