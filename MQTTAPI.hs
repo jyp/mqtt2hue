@@ -25,7 +25,7 @@ import Text.Read (readMaybe)
 import Data.Word (Word64)
 import Numeric (showHex)
 
-data ColorXY = ColorXY {x,y :: Float} deriving (Generic, Show, Eq)
+data ColorXY = ColorXY {x,y :: Float, hue, saturation :: Maybe Int} deriving (Generic, Show, Eq)
 instance FromJSON ColorXY
 instance ToJSON ColorXY
 

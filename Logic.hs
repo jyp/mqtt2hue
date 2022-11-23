@@ -54,7 +54,7 @@ hueSmallIdToLightConfig AppState{..} smallId = do
 actionHue2Mqtt  :: HueAPI.Action -> MQTTAPI.Action
 actionHue2Mqtt HueAPI.Action{..} = MQTTAPI.Action {
   brightness = bri
-  ,color = (<$> xy) $ \case [x,y] -> ColorXY x y; _ -> error "actionHue2Mqtt: xy list wrong length"
+  ,color = (<$> xy) $ \case [x,y] -> ColorXY x y Nothing Nothing; _ -> error "actionHue2Mqtt: xy list wrong length"
   ,state = (<$> on) $ \case
      False -> OFF
      True -> ON
@@ -99,11 +99,11 @@ lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
 lightStateMqtt2Hue MQTTAPI.LightState {brightness,color_temp,state,color_mode,color}
   = HueAPI.LightState {on = state == ON
                       ,bri = Data.Maybe.fromMaybe 0 brightness
-                      -- ,hue = _ -- FIXME: calculate hue/sat from x/y
-                      -- ,sat = _
+                      ,hue = do ColorXY {hue} <- color; hue
+                      ,sat = do ColorXY {saturation} <- color; saturation
                       ,ct = color_temp
                       ,effect = None
-                      ,xy = fmap (\(ColorXY x y) -> [x,y]) color
+                      ,xy = fmap (\(ColorXY {x,y}) -> [x,y]) color
                       ,alert = SelectAlert
                       ,colormode = (<$> color_mode) $ \case
                           TemperatureMode -> CT
@@ -164,13 +164,14 @@ getLightState AppState{..} cfg
   = enrichLightState (supported_color_modes cfg)
     (Data.Map.findWithDefault blankLightState (state_topic cfg) lightStates)
 
--- | Invent some colors if the light support them (otherwise Gnome app
--- won't see it does in fact support them)
+-- | Invent some colors if the light supports them but we did not get
+-- them from the state yet. (otherwise Gnome app won't see that it
+-- does in fact support them) (???)
 enrichLightState :: [MQTTAPI.ColorMode] -> MQTTAPI.LightState -> MQTTAPI.LightState
 enrichLightState cmodes ls@MQTTAPI.LightState{color,color_temp} =
   ls {color =
          if XYMode `elem` cmodes && isNothing color
-         then Just (ColorXY 0.4 0.4)
+         then Just (ColorXY 0.4 0.4 Nothing Nothing)
          else color
      ,color_temp =
          if TemperatureMode `elem` cmodes && isNothing color_temp
@@ -193,8 +194,8 @@ instance Avg Int where
   (+.) = (+)
   divide = div
 instance Avg ColorXY where
-  ColorXY x1 y1 +. ColorXY x2 y2 = ColorXY (x1+x2) (y1+y2)
-  divide (ColorXY x y) n = ColorXY (x / fromIntegral n) (y / fromIntegral n)
+  ColorXY x1 y1 _ _ +. ColorXY x2 y2 _ _ = ColorXY (x1+x2) (y1+y2) Nothing Nothing
+  divide (ColorXY x y _ _) n = ColorXY (x / fromIntegral n) (y / fromIntegral n) Nothing Nothing
   
 average :: Avg a => [a] -> Maybe a
 average [] = Nothing
