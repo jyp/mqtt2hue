@@ -1,0 +1,804 @@
+[
+  {
+    "definition": null,
+    "endpoints": {
+      "1": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "10": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "11": {
+        "bindings": [],
+        "clusters": {
+          "input": [
+            "ssIasAce",
+            "genTime"
+          ],
+          "output": [
+            "ssIasZone",
+            "ssIasWd"
+          ]
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "110": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "12": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "13": {
+        "bindings": [],
+        "clusters": {
+          "input": [
+            "genOta"
+          ],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "2": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "242": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "3": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "4": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "47": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "5": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "6": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "8": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": []
+        },
+        "configured_reportings": [],
+        "scenes": []
+      }
+    },
+    "friendly_name": "Coordinator",
+    "ieee_address": "0x00124b0025e1df38",
+    "interview_completed": true,
+    "interviewing": false,
+    "network_address": 0,
+    "supported": false,
+    "type": "Coordinator"
+  },
+  {
+    "date_code": "20220502",
+    "definition": {
+      "description": "Hue white and color ambiance LightStrip plus",
+      "exposes": [
+        {
+          "features": [
+            {
+              "access": 7,
+              "description": "On/off state of this light",
+              "name": "state",
+              "property": "state",
+              "type": "binary",
+              "value_off": "OFF",
+              "value_on": "ON",
+              "value_toggle": "TOGGLE"
+            },
+            {
+              "access": 7,
+              "description": "Brightness of this light",
+              "name": "brightness",
+              "property": "brightness",
+              "type": "numeric",
+              "value_max": 254,
+              "value_min": 0
+            },
+            {
+              "access": 7,
+              "description": "Color temperature of this light",
+              "name": "color_temp",
+              "presets": [
+                {
+                  "description": "Coolest temperature supported",
+                  "name": "coolest",
+                  "value": 150
+                },
+                {
+                  "description": "Cool temperature (250 mireds / 4000 Kelvin)",
+                  "name": "cool",
+                  "value": 250
+                },
+                {
+                  "description": "Neutral temperature (370 mireds / 2700 Kelvin)",
+                  "name": "neutral",
+                  "value": 370
+                },
+                {
+                  "description": "Warm temperature (454 mireds / 2200 Kelvin)",
+                  "name": "warm",
+                  "value": 454
+                },
+                {
+                  "description": "Warmest temperature supported",
+                  "name": "warmest",
+                  "value": 500
+                }
+              ],
+              "property": "color_temp",
+              "type": "numeric",
+              "unit": "mired",
+              "value_max": 500,
+              "value_min": 150
+            },
+            {
+              "access": 7,
+              "description": "Color temperature after cold power on of this light",
+              "name": "color_temp_startup",
+              "presets": [
+                {
+                  "description": "Coolest temperature supported",
+                  "name": "coolest",
+                  "value": 150
+                },
+                {
+                  "description": "Cool temperature (250 mireds / 4000 Kelvin)",
+                  "name": "cool",
+                  "value": 250
+                },
+                {
+                  "description": "Neutral temperature (370 mireds / 2700 Kelvin)",
+                  "name": "neutral",
+                  "value": 370
+                },
+                {
+                  "description": "Warm temperature (454 mireds / 2200 Kelvin)",
+                  "name": "warm",
+                  "value": 454
+                },
+                {
+                  "description": "Warmest temperature supported",
+                  "name": "warmest",
+                  "value": 500
+                },
+                {
+                  "description": "Restore previous color_temp on cold power on",
+                  "name": "previous",
+                  "value": 65535
+                }
+              ],
+              "property": "color_temp_startup",
+              "type": "numeric",
+              "unit": "mired",
+              "value_max": 500,
+              "value_min": 150
+            },
+            {
+              "description": "Color of this light in the CIE 1931 color space (x/y)",
+              "features": [
+                {
+                  "access": 7,
+                  "name": "x",
+                  "property": "x",
+                  "type": "numeric"
+                },
+                {
+                  "access": 7,
+                  "name": "y",
+                  "property": "y",
+                  "type": "numeric"
+                }
+              ],
+              "name": "color_xy",
+              "property": "color",
+              "type": "composite"
+            },
+            {
+              "description": "Color of this light expressed as hue/saturation",
+              "features": [
+                {
+                  "access": 7,
+                  "name": "hue",
+                  "property": "hue",
+                  "type": "numeric"
+                },
+                {
+                  "access": 7,
+                  "name": "saturation",
+                  "property": "saturation",
+                  "type": "numeric"
+                }
+              ],
+              "name": "color_hs",
+              "property": "color",
+              "type": "composite"
+            }
+          ],
+          "type": "light"
+        },
+        {
+          "access": 2,
+          "description": "Triggers an effect on the light (e.g. make light blink for a few seconds)",
+          "name": "effect",
+          "property": "effect",
+          "type": "enum",
+          "values": [
+            "blink",
+            "breathe",
+            "okay",
+            "channel_change",
+            "finish_effect",
+            "stop_effect"
+          ]
+        },
+        {
+          "access": 1,
+          "description": "Link quality (signal strength)",
+          "name": "linkquality",
+          "property": "linkquality",
+          "type": "numeric",
+          "unit": "lqi",
+          "value_max": 255,
+          "value_min": 0
+        }
+      ],
+      "model": "8718699703424",
+      "options": [
+        {
+          "access": 2,
+          "description": "Controls the transition time (in seconds) of on/off, brightness, color temperature (if applicable) and color (if applicable) changes. Defaults to `0` (no transition).",
+          "name": "transition",
+          "property": "transition",
+          "type": "numeric",
+          "value_min": 0
+        },
+        {
+          "access": 2,
+          "description": "When enabled colors will be synced, e.g. if the light supports both color x/y and color temperature a conversion from color x/y to color temperature will be done when setting the x/y color (default true).",
+          "name": "color_sync",
+          "property": "color_sync",
+          "type": "binary",
+          "value_off": false,
+          "value_on": true
+        }
+      ],
+      "supports_ota": true,
+      "vendor": "Philips"
+    },
+    "endpoints": {
+      "11": {
+        "bindings": [
+          {
+            "cluster": "genOnOff",
+            "target": {
+              "endpoint": 1,
+              "ieee_address": "0x00124b0025e1df38",
+              "type": "endpoint"
+            }
+          },
+          {
+            "cluster": "genLevelCtrl",
+            "target": {
+              "endpoint": 1,
+              "ieee_address": "0x00124b0025e1df38",
+              "type": "endpoint"
+            }
+          }
+        ],
+        "clusters": {
+          "input": [
+            "genBasic",
+            "genIdentify",
+            "genGroups",
+            "genScenes",
+            "genOnOff",
+            "genLevelCtrl",
+            "touchlink",
+            "manuSpecificPhilips2",
+            "lightingColorCtrl",
+            "manuSpecificUbisysDimmerSetup"
+          ],
+          "output": [
+            "genOta"
+          ]
+        },
+        "configured_reportings": [
+          {
+            "attribute": "onOff",
+            "cluster": "genOnOff",
+            "maximum_report_interval": 3600,
+            "minimum_report_interval": 0,
+            "reportable_change": 0
+          },
+          {
+            "attribute": "currentLevel",
+            "cluster": "genLevelCtrl",
+            "maximum_report_interval": 3600,
+            "minimum_report_interval": 5,
+            "reportable_change": 1
+          }
+        ],
+        "scenes": []
+      },
+      "242": {
+        "bindings": [],
+        "clusters": {
+          "input": [],
+          "output": [
+            "greenPower"
+          ]
+        },
+        "configured_reportings": [],
+        "scenes": []
+      }
+    },
+    "friendly_name": "TV Backlight",
+    "ieee_address": "0x001788010bf4769e",
+    "interview_completed": true,
+    "interviewing": false,
+    "manufacturer": "Signify Netherlands B.V.",
+    "model_id": "LCL001",
+    "network_address": 31546,
+    "power_source": "Mains (single phase)",
+    "software_build_id": "1.93.11",
+    "supported": true,
+    "type": "Router"
+  },
+  {
+    "date_code": "Jun  7 2022",
+    "definition": {
+      "description": "Aqara Smart Radiator Thermostat E1",
+      "exposes": [
+        {
+          "features": [
+            {
+              "access": 3,
+              "description": "On/off state of the switch",
+              "name": "state",
+              "property": "state",
+              "type": "binary",
+              "value_off": "OFF",
+              "value_on": "ON",
+              "value_toggle": "TOGGLE"
+            }
+          ],
+          "type": "switch"
+        },
+        {
+          "features": [
+            {
+              "access": 7,
+              "description": "Temperature setpoint",
+              "name": "occupied_heating_setpoint",
+              "property": "occupied_heating_setpoint",
+              "type": "numeric",
+              "unit": "°C",
+              "value_max": 30,
+              "value_min": 5,
+              "value_step": 0.5
+            },
+            {
+              "access": 1,
+              "description": "Current temperature measured on the device",
+              "name": "local_temperature",
+              "property": "local_temperature",
+              "type": "numeric",
+              "unit": "°C"
+            },
+            {
+              "access": 3,
+              "description": 3,
+              "name": "preset",
+              "property": "preset",
+              "type": "enum",
+              "values": [
+                "manual",
+                "away",
+                "auto"
+              ]
+            }
+          ],
+          "type": "climate"
+        },
+        {
+          "features": [
+            {
+              "access": 3,
+              "description": "Enables/disables physical input on the device",
+              "name": "state",
+              "property": "child_lock",
+              "type": "binary",
+              "value_off": "UNLOCK",
+              "value_on": "LOCK"
+            }
+          ],
+          "type": "lock"
+        },
+        {
+          "features": [
+            {
+              "access": 3,
+              "description": "Enables/disables window detection on the device",
+              "name": "state",
+              "property": "window_detection",
+              "type": "binary",
+              "value_off": "OFF",
+              "value_on": "ON",
+              "value_toggle": "TOGGLE"
+            }
+          ],
+          "type": "switch"
+        },
+        {
+          "features": [
+            {
+              "access": 3,
+              "name": "state",
+              "property": "valve_detection",
+              "type": "binary",
+              "value_off": "OFF",
+              "value_on": "ON",
+              "value_toggle": "TOGGLE"
+            }
+          ],
+          "type": "switch"
+        },
+        {
+          "access": 3,
+          "description": "Away preset temperature",
+          "name": "away_preset_temperature",
+          "property": "away_preset_temperature",
+          "type": "numeric",
+          "unit": "°C",
+          "value_max": 35,
+          "value_min": -10
+        },
+        {
+          "access": 1,
+          "description": "Voltage of the battery in millivolts",
+          "name": "voltage",
+          "property": "voltage",
+          "type": "numeric",
+          "unit": "mV"
+        },
+        {
+          "access": 1,
+          "description": "Remaining battery in %",
+          "name": "battery",
+          "property": "battery",
+          "type": "numeric",
+          "unit": "%",
+          "value_max": 100,
+          "value_min": 0
+        },
+        {
+          "access": 1,
+          "description": "Link quality (signal strength)",
+          "name": "linkquality",
+          "property": "linkquality",
+          "type": "numeric",
+          "unit": "lqi",
+          "value_max": 255,
+          "value_min": 0
+        }
+      ],
+      "model": "SRTS-A01",
+      "options": [
+        {
+          "access": 2,
+          "description": "Controls the temperature unit of the thermostat (default celsius).",
+          "name": "thermostat_unit",
+          "property": "thermostat_unit",
+          "type": "enum",
+          "values": [
+            "celsius",
+            "fahrenheit"
+          ]
+        }
+      ],
+      "supports_ota": false,
+      "vendor": "Xiaomi"
+    },
+    "endpoints": {
+      "1": {
+        "bindings": [],
+        "clusters": {
+          "input": [
+            "genBasic",
+            "genPowerCfg",
+            "genIdentify",
+            "aqaraOpple",
+            "genTime",
+            "hvacThermostat"
+          ],
+          "output": [
+            "genIdentify",
+            "aqaraOpple",
+            "hvacThermostat"
+          ]
+        },
+        "configured_reportings": [],
+        "scenes": []
+      }
+    },
+    "friendly_name": "Aqara valve 1",
+    "ieee_address": "0x54ef44100057be39",
+    "interview_completed": true,
+    "interviewing": false,
+    "manufacturer": "LUMI",
+    "model_id": "lumi.airrtc.agl001",
+    "network_address": 41905,
+    "power_source": "Battery",
+    "software_build_id": "0.0.0_0025",
+    "supported": true,
+    "type": "EndDevice"
+  },
+  {
+    "date_code": "20190410",
+    "definition": {
+      "description": "Hue dimmer switch",
+      "exposes": [
+        {
+          "access": 1,
+          "description": "Remaining battery in %",
+          "name": "battery",
+          "property": "battery",
+          "type": "numeric",
+          "unit": "%",
+          "value_max": 100,
+          "value_min": 0
+        },
+        {
+          "access": 1,
+          "description": "Triggered action (e.g. a button click)",
+          "name": "action",
+          "property": "action",
+          "type": "enum",
+          "values": [
+            "on_press",
+            "on_hold",
+            "on_hold_release",
+            "up_press",
+            "up_hold",
+            "up_hold_release",
+            "down_press",
+            "down_hold",
+            "down_hold_release",
+            "off_press",
+            "off_hold",
+            "off_hold_release"
+          ]
+        },
+        {
+          "access": 1,
+          "name": "action_duration",
+          "property": "action_duration",
+          "type": "numeric",
+          "unit": "second"
+        },
+        {
+          "access": 1,
+          "description": "Link quality (signal strength)",
+          "name": "linkquality",
+          "property": "linkquality",
+          "type": "numeric",
+          "unit": "lqi",
+          "value_max": 255,
+          "value_min": 0
+        }
+      ],
+      "model": "324131092621",
+      "options": [
+        {
+          "access": 2,
+          "description": "Set to false to disable the legacy integration (highly recommended), will change structure of the published payload (default true).",
+          "name": "legacy",
+          "property": "legacy",
+          "type": "binary",
+          "value_off": false,
+          "value_on": true
+        },
+        {
+          "description": "Simulate a brightness value. If this device provides a brightness_move_up or brightness_move_down action it is possible to specify the update interval and delta.Only works when legacy is false.",
+          "features": [
+            {
+              "access": 2,
+              "description": "Delta per interval, 20 by default",
+              "name": "delta",
+              "property": "delta",
+              "type": "numeric",
+              "value_min": 0
+            },
+            {
+              "access": 2,
+              "description": "Interval duration",
+              "name": "interval",
+              "property": "interval",
+              "type": "numeric",
+              "unit": "ms",
+              "value_min": 0
+            }
+          ],
+          "name": "simulated_brightness",
+          "property": "simulated_brightness",
+          "type": "composite"
+        }
+      ],
+      "supports_ota": true,
+      "vendor": "Philips"
+    },
+    "endpoints": {
+      "1": {
+        "bindings": [
+          {
+            "cluster": "genScenes",
+            "target": {
+              "id": 1,
+              "type": "group"
+            }
+          },
+          {
+            "cluster": "genOnOff",
+            "target": {
+              "id": 1,
+              "type": "group"
+            }
+          },
+          {
+            "cluster": "genLevelCtrl",
+            "target": {
+              "id": 1,
+              "type": "group"
+            }
+          }
+        ],
+        "clusters": {
+          "input": [
+            "genBasic"
+          ],
+          "output": [
+            "genBasic",
+            "genIdentify",
+            "genGroups",
+            "genOnOff",
+            "genLevelCtrl",
+            "genScenes"
+          ]
+        },
+        "configured_reportings": [],
+        "scenes": []
+      },
+      "2": {
+        "bindings": [
+          {
+            "cluster": "manuSpecificUbisysDeviceSetup",
+            "target": {
+              "endpoint": 1,
+              "ieee_address": "0x00124b0025e1df38",
+              "type": "endpoint"
+            }
+          },
+          {
+            "cluster": "genPowerCfg",
+            "target": {
+              "endpoint": 1,
+              "ieee_address": "0x00124b0025e1df38",
+              "type": "endpoint"
+            }
+          }
+        ],
+        "clusters": {
+          "input": [
+            "genBasic",
+            "genPowerCfg",
+            "genIdentify",
+            "genBinaryInput",
+            "manuSpecificPhilips"
+          ],
+          "output": [
+            "genOta"
+          ]
+        },
+        "configured_reportings": [
+          {
+            "attribute": "batteryPercentageRemaining",
+            "cluster": "genPowerCfg",
+            "maximum_report_interval": 62000,
+            "minimum_report_interval": 3600,
+            "reportable_change": 0
+          }
+        ],
+        "scenes": []
+      }
+    },
+    "friendly_name": "0x0017880106e804ef",
+    "ieee_address": "0x0017880106e804ef",
+    "interview_completed": true,
+    "interviewing": false,
+    "manufacturer": "Philips",
+    "model_id": "RWL021",
+    "network_address": 15863,
+    "power_source": "Battery",
+    "software_build_id": "6.1.1.28573",
+    "supported": true,
+    "type": "EndDevice"
+  }
+]
+

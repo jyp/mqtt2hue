@@ -338,6 +338,7 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
         () | topic == "zigbee2mqtt/bridge/devices",
              Just ds <- decode msg -> do
           modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address,d) | d@ZigDevice{ieee_address} <- ds] }))
+          withMVar st $ \AppState{zigDevices} -> Text.putStrLn ("!!!" <> Text.pack (show zigDevices))
         () | topic == "zigbee2mqtt/bridge/groups",
              Just gs <- decode msg -> do
           modifyMVarMasked_ st (\s -> return (s {groups = fromList [(i,d) | d@MQTTAPI.GroupConfig{_id=i} <- gs] } :: AppState))

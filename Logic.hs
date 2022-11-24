@@ -53,6 +53,7 @@ hueSmallIdToLightConfig AppState{..} smallId = do
 
 actionHue2Mqtt  :: HueAPI.Action -> MQTTAPI.Action
 actionHue2Mqtt HueAPI.Action{..} = MQTTAPI.Action {
+  action = Nothing, -- button-like action
   brightness = bri
   ,color = (<$> xy) $ \case [x,y] -> ColorXY x y Nothing Nothing; _ -> error "actionHue2Mqtt: xy list wrong length"
   ,state = (<$> on) $ \case
