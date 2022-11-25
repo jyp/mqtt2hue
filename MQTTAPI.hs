@@ -46,13 +46,15 @@ instance FromJSON IEEEAddress where
       Nothing ->  fail "fromJSON: invalid IEEE address number"
       Just x -> return (IEEEAddress x)
     _ -> fail "fromJSON: invalid IEEE address"
-
+instance ToJSON IEEEAddress where
+  toJSON x = String (pack (show x))
 
 data ZigDevice = ZigDevice
   {model_id :: Maybe String -- model_id missing for controller
   ,network_address :: Int
   ,ieee_address :: IEEEAddress
   ,endpoints :: Map Int Endpoint
+  ,friendly_name :: Text
   } deriving (Generic,Show)
 
 data ColorMode = TemperatureMode | XYMode deriving (Generic, Show, Eq)
@@ -92,11 +94,6 @@ instance ToJSON LightState
 
 data BtnType = OnBtn | OffBtn | OtherBtn Text deriving Show
 
-toText = \case
-   OnBtn -> "on"
-   OffBtn -> "off"
-   OtherBtn x -> x
-
 data BtnState = Press | Release | Hold deriving Show
 
 data ActionType = NoAction | BtnAction BtnType BtnState deriving Show
@@ -116,7 +113,7 @@ parseState = \case
 instance FromJSON ActionType where
   parseJSON = \case
     String "" -> return NoAction
-    String s -> case splitOn "_" s of
+    String s -> case splitOn "-" s of
                  [btn,state] -> BtnAction (parseBtn btn) <$> parseState state
                  _ -> fail "fromJSON: mqtt: invalid action format"
     _ -> fail "fromJSON: mqtt: invalid action type" 
@@ -133,7 +130,8 @@ data Action = Action
     scene_recall :: Maybe Int
   } deriving (Generic, Show)
 
-
+blankAction :: Action
+blankAction = Action Nothing Nothing Nothing Nothing Nothing 
 data Status = Idle | Busy
   deriving (Eq, Show, Generic)
 instance FromJSON Status where
@@ -205,14 +203,19 @@ data GroupConfig = GroupConfig
   ,members :: [GroupMember]
   } deriving (Show,Generic)
 instance FromJSON GroupMember
-$(myDeriveFromJSON ''SceneRef)
-$(myDeriveFromJSON ''GroupConfig)
+instance ToJSON GroupMember
+$(myDeriveJSON ''SceneRef)
+$(myDeriveJSON ''GroupConfig)
 $(myDeriveFromJSON ''Action)
 $(myDeriveToJSON ''Action)
 $(myDeriveFromJSON ''Target)
+$(myDeriveToJSON ''Target)
 instance FromJSON Binding
+instance ToJSON Binding
 instance FromJSON Endpoint
+instance ToJSON Endpoint
 instance FromJSON ZigDevice
+instance ToJSON ZigDevice
 instance FromJSON Device
 instance FromJSON LightConfig
 

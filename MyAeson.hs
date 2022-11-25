@@ -31,5 +31,11 @@ data Choice a b = Opt1 a | Opt2 b deriving Show
 instance (FromJSON a, FromJSON b) => FromJSON (Choice a b) where
   parseJSON v = (Opt1 <$> parseJSON v) <|> (Opt2 <$> parseJSON v)
 
+instance (ToJSON a, ToJSON b) => ToJSON (Choice a b) where
+  toJSON = \case
+    Opt1 x -> toJSON x
+    Opt2 x -> toJSON x
+
+
 decodeTestFile :: FromJSON a => String -> IO (Maybe a)
 decodeTestFile fname = decode <$> Data.ByteString.Lazy.readFile fname

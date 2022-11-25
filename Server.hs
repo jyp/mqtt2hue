@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -223,22 +224,30 @@ configuredGroup userId i = do
   verifyUser userId
   withAppState (getHueGroup i)
 
+runTodos :: [Todo] -> HueHandler Text.Text
+runTodos as =
+  do semas <- asks serverSemaphores
+     mc <- liftIO . readMVar . mqttState =<< ask
+     liftIO $ runTodos' mc semas as
+     return "Updated."
+     
+runTodos' :: MQTTClient -> MultiSem Text -> [Todo] -> IO ()
+runTodos' mc semas as = do
+       _ <- forkIO $ forM_ as $ \case 
+         (Todo t a _) -> do
+           let Just t' = mkTopic t
+           appPublish' mc t' a
+       waitForSemaphoresAtMost 1000000 [n | Todo _ _ n <- as] semas
+       -- the client will ask for states immediately upon recieving
+       -- response. But we have not gotten the update from mqtt yet.
+       -- So try wait for such updates before returning, but wait 1sec at most
+
 groupAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 groupAction userId groupId a0 = do
   verifyUser userId
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show groupId) <> " " <> Text.pack (show a0))
-  as0 <- askingState (translateGroupAction groupId a0)
-  semas <- asks serverSemaphores
-  case as0 of
-    Nothing -> throwError err400
-    Just as -> do
-      mc <- liftIO . readMVar . mqttState =<< ask
-      _ <- liftIO $ forkIO $ forM_ as $ \(g,a) -> do
-        let Just t' = mkTopic (groupSetTopic g)
-        appPublish' mc t' a
-      liftIO $ waitForSemaphoresAtMost 1000000 [groupNotifyTopic g | (g,_) <- as] semas
-      -- try to wait until MQTT has updated the stuff
-      return "Updated."
+  as <- withAppState (translateGroupAction groupId a0)
+  runTodos as
 
 appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
 appPublish t a = do
@@ -254,15 +263,8 @@ lightAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction userId lightId action = do
   verifyUser userId
   liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
-  (l,a) <- askingState (translateLightAction lightId action )
-  let Just t' = mkTopic (lightSetTopic l)
-  appPublish t' a
-  semas <- asks serverSemaphores
-  -- the client will ask for states immediately upon recieving
-  -- response. But we have not gotten the update from mqtt yet.
-  -- So wait for such updates (a bit) before returning.
-  liftIO $ waitForSemaphoreAtMost 1000000 (lightNotifyTopic l) semas
-  return "Updated."
+  a <- askingState (translateLightAction lightId action)
+  runTodos [a]
 
 
 allConfig :: Text -> HueHandler Everything
@@ -335,6 +337,10 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
           modifyMVarMasked_ st (return . updateLightState topic l)
           withMVar st $ \AppState{lightStates} -> Text.putStrLn ("!!!" <> Text.pack (show lightStates))
           signalSemaphore topic semas
+        () | "zigbee2mqtt/" `Text.isPrefixOf` topic,
+             Just (sw::MQTTAPI.SwitchState) <- decode msg -> do
+          msgs <- modifyMVarMasked st $ \s -> return (handleSwitchState topic sw s)
+          runTodos' mc semas msgs
         () | topic == "zigbee2mqtt/bridge/devices",
              Just ds <- decode msg -> do
           modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address,d) | d@ZigDevice{ieee_address} <- ds] }))

@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -10,33 +11,45 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Logic ( AppState(..),
+module Logic ( AppState(..), Todo(..),
               --  hue side
               allHueLights, allHueGroups, getHueGroup, allHueScenes,
-              translateGroupAction, groupSetTopic, groupNotifyTopic,
-              translateLightAction, lightSetTopic, lightNotifyTopic,
+              translateGroupAction, translateLightAction, 
               -- MQTT side
               blankAppState,  updateLightConfig, updateLightState,
+              -- Automations
+              handleSwitchState
              ) where
 import Data.Maybe
 import MQTTAPI
 import HueAPI
 import qualified Data.Map as Map
-import Data.Map
+import Data.Map (Map)
 import Data.Text (Text,splitOn,unpack,pack,isInfixOf,toCaseFold)
 import Data.Time.Clock
 import Text.Read (readMaybe)
 import MyAeson(Choice(..))
+import Data.Aeson (ToJSON(..))
+import qualified Data.List as List
+import qualified Data.Text as Text
+import Control.Monad
 
 blankAppState :: AppState 
-blankAppState = AppState mempty mempty mempty mempty mempty
+blankAppState = AppState mempty mempty mempty mempty mempty mempty mempty
+
+data Todo = forall a. ToJSON a => Todo
+  { outTopic :: Text
+  , message :: a
+  , notifyTopic :: Text }
 
 data AppState = AppState
   {lights :: Map IEEEAddress MQTTAPI.LightConfig
   ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state. Lights and groups here.
+  ,switchStates :: Map Text MQTTAPI.SwitchState -- map from topic to state. Switches here.
   ,lightIds :: Map IEEEAddress Int -- give hue v1 id here
   ,zigDevices :: Map IEEEAddress ZigDevice
   ,groups :: Map Int MQTTAPI.GroupConfig
+  ,groupLastRecallScene :: Map Int Int -- map from group id to last activated scene
   } deriving Show
 
 swap :: (b, a) -> (a, b)
@@ -46,14 +59,12 @@ hueSmallIdToLightConfig :: AppState -> Int -> MQTTAPI.LightConfig
 hueSmallIdToLightConfig AppState{..} smallId = do
   case Prelude.lookup smallId (swap <$> Map.assocs lightIds) of
     Nothing -> error ("hueSmallIdToLightConfig: unknown small id:" <> show smallId)
-    Just uid -> case Data.Map.lookup uid lights of
+    Just uid -> case Map.lookup uid lights of
       Nothing -> error ("hueSmallIdToLightConfig: unknown uid:" <> show uid)
       Just x -> x
-  
 
 actionHue2Mqtt  :: HueAPI.Action -> MQTTAPI.Action
 actionHue2Mqtt HueAPI.Action{..} = MQTTAPI.Action {
-  action = Nothing, -- button-like action
   brightness = bri
   ,color = (<$> xy) $ \case [x,y] -> ColorXY x y Nothing Nothing; _ -> error "actionHue2Mqtt: xy list wrong length"
   ,state = (<$> on) $ \case
@@ -65,8 +76,8 @@ actionHue2Mqtt HueAPI.Action{..} = MQTTAPI.Action {
       Just mqttSid -> mqttSid
   }
 
-translateLightAction :: Int -> HueAPI.Action -> AppState -> (MQTTAPI.LightConfig, MQTTAPI.Action)
-translateLightAction hueLightId a0 st0 = (l,a) 
+translateLightAction :: Int -> HueAPI.Action -> AppState -> Todo
+translateLightAction hueLightId a0 st0 = Todo (lightSetTopic l) a (lightNotifyTopic l)
  where a = actionHue2Mqtt a0
        l = hueSmallIdToLightConfig st0 hueLightId
        -- update the state so that immediate queries will get the
@@ -85,15 +96,65 @@ groupNotifyTopic GroupConfig{friendly_name} = "zigbee2mqtt/" <> friendly_name
 groupSetTopic :: GroupConfig -> Text
 groupSetTopic g = groupNotifyTopic g  <> "/set"
 
-translateGroupAction  :: Int -> HueAPI.Action -> AppState -> Maybe [(MQTTAPI.GroupConfig, MQTTAPI.Action)]
-translateGroupAction 0 a0 AppState{groups} = do
+mkGroupAction :: ToJSON a => GroupConfig -> a -> Todo
+mkGroupAction g a = Todo (groupSetTopic g) a (groupNotifyTopic g)
+
+translateGroupAction  :: Int -> HueAPI.Action -> AppState -> Maybe (AppState, [Todo])
+translateGroupAction 0 a0 st0@AppState{groups} = do
   let a = actionHue2Mqtt a0
   -- there is no MQTT group for everything, so send a message to each group separately
-  return [(g,a) | (_,g)  <- assocs groups]
-translateGroupAction groupId a0 AppState{groups} = do
-  g <- Data.Map.lookup groupId groups
+  return (st0,[mkGroupAction g a | (_,g)  <- Map.assocs groups])
+translateGroupAction groupId a0 st0@AppState{groups} = do
+  g <- Map.lookup groupId groups
   let a = actionHue2Mqtt a0
-  return [(g,a)]
+  return (applyGroupAction st0 g a,[mkGroupAction g a])
+
+applyGroupAction :: AppState -> GroupConfig -> MQTTAPI.Action -> AppState
+applyGroupAction st0@AppState {groupLastRecallScene}
+  GroupConfig {_id=gid}
+  (MQTTAPI.Action {scene_recall = Just sid}) =
+  st0 {groupLastRecallScene = Map.insert gid sid groupLastRecallScene}
+applyGroupAction st _ _ = st
+  
+
+getDeviceByFriendlyName :: Text -> AppState -> Maybe ZigDevice
+getDeviceByFriendlyName nm AppState{zigDevices} =
+  List.find (\ZigDevice{friendly_name=n} -> n == nm) (Map.elems zigDevices)
+
+topicFriendlyName :: Text -> Text
+topicFriendlyName = Text.tail . Text.dropWhile (/= '/')
+
+-- >>> topicFriendlyName (Text.pack "zigbee2mqtt/Nice Stuff")
+-- "Nice Stuff"
+  
+handleSwitchState :: Text -> SwitchState -> AppState -> (AppState, [Todo])
+handleSwitchState t SwitchState { action = BtnAction OnBtn Press }
+                    st0@AppState{groups,lightStates,groupLastRecallScene}
+  = fromMaybe (st0,[]) $ do
+      dev <- getDeviceByFriendlyName (topicFriendlyName t) st0
+      let gids = [ gid | ep <- Map.elems (endpoints dev)
+                       , Binding cluster
+                         (Target {_id = Just gid,_type = "group"}) <- bindings ep
+                       , cluster == "genOnOff"]
+      gid <- listToMaybe gids
+      g <- Map.lookup gid groups
+      MQTTAPI.LightState {state} <- Map.lookup (groupNotifyTopic g) lightStates
+      -- return [Todo "hue2mqtt/debug/switchscene/group" g "",
+      --         Todo "hue2mqtt/debug/switchscene/state" state ""]
+      when (state  == OFF) $
+        fail "don't change scene if group is off"
+      let lastScene = Map.findWithDefault lastAvailableScene gid groupLastRecallScene
+          gss = groupScenes st0 gid
+          -- by default take the last scene in the list, so the activated scene will be the 1st
+          lastAvailableScene:_ = reverse gss ++ [0]
+      -- return [Todo "hue2mqtt/debug/switchscene/lastscene" lastScene ""
+      --        ,Todo "hue2mqtt/debug/switchscene/lastAvailableScene" lastAvailableScene ""]
+      case dropWhile (/= lastScene) (gss ++ gss) of -- copy in case its last
+        (_:nextScene:_) -> do
+          let a = blankAction {scene_recall = Just nextScene}
+          return (applyGroupAction st0 g a, [mkGroupAction g a])
+        _ -> fail "next scene not found"
+handleSwitchState _ _ st = (st, [])
 
             
 lightStateMqtt2Hue :: MQTTAPI.LightState -> HueAPI.LightState
@@ -163,7 +224,7 @@ blankLightState = MQTTAPI.LightState
 getLightState :: AppState -> MQTTAPI.LightConfig -> MQTTAPI.LightState
 getLightState AppState{..} cfg
   = enrichLightState (supported_color_modes cfg)
-    (Data.Map.findWithDefault blankLightState (state_topic cfg) lightStates)
+    (Map.findWithDefault blankLightState (state_topic cfg) lightStates)
 
 -- | Invent some colors if the light supports them but we did not get
 -- them from the state yet. (otherwise Gnome app won't see that it
@@ -180,13 +241,13 @@ enrichLightState cmodes ls@MQTTAPI.LightState{color,color_temp} =
          else color_temp}
 
 allHueLights :: AppState -> Map Int Light
-allHueLights st@AppState{..} = lightsMqtt2Hue st (elems lights)
+allHueLights st@AppState{..} = lightsMqtt2Hue st (Map.elems lights)
 
 lightsMqtt2Hue :: AppState -> [MQTTAPI.LightConfig] -> Map Int Light
 lightsMqtt2Hue st@AppState{..} ls
   = Map.fromList [(i,lightMqtt2Hue l (lightStateMqtt2Hue (getLightState st l)))
                  | l <- ls
-                 , let Just i = Data.Map.lookup (lightAddress l) lightIds]
+                 , let Just i = Map.lookup (lightAddress l) lightIds]
 
 class Avg a where
   (+.) :: a -> a -> a
@@ -226,8 +287,8 @@ combineLightStates ls = MQTTAPI.LightState
 mkGroupWithLights :: AppState -> GroupType -> Text -> Map IEEEAddress MQTTAPI.LightConfig -> Group
 mkGroupWithLights st@AppState{..} _type name ls
   = Group {lights = [pack (show i)
-                    | (uid,_) <- toList ls
-                    , let Just i = Data.Map.lookup uid lightIds]
+                    | (uid,_) <- Map.toList ls
+                    , let Just i = Map.lookup uid lightIds]
           ,sensors = mempty
           ,state = GroupState {all_on = and ons
                               ,any_on = or ons}
@@ -245,7 +306,7 @@ mkGroupWithLights st@AppState{..} _type name ls
           ,action = lightStateMqtt2Hue (combineLightStates groupLightStates)
           ,..}
   where ons = [state == ON | MQTTAPI.LightState{state} <- groupLightStates  ]
-        groupLightStates = getLightState st . snd <$> toList ls
+        groupLightStates = getLightState st . snd <$> Map.toList ls
         nm = toCaseFold name
   
 group0 :: AppState -> MQTTAPI.GroupConfig
@@ -253,14 +314,14 @@ group0 AppState{lights} = GroupConfig
   {_id = 0
   ,friendly_name = "All lights"
   ,scenes = []
-  ,members = [GroupMember {ieee_address = a ,endpoint = Opt1 0} | (a,_) <- assocs lights]
+  ,members = [GroupMember {ieee_address = a ,endpoint = Opt1 0} | (a,_) <- Map.assocs lights]
   }
   
 getHueGroup :: Int -> AppState -> Maybe (AppState,Group)
 getHueGroup i st@AppState{groups} = do
   g <- case i of
     0 -> return (group0 st)
-    _ -> Data.Map.lookup i groups
+    _ -> Map.lookup i groups
   return (st,groupMqtt2Hue st g)
 
 lightAddress :: MQTTAPI.LightConfig -> IEEEAddress
@@ -273,14 +334,15 @@ lightAddress l = uid
 
 updateLightConfig :: MQTTAPI.LightConfig -> AppState -> AppState
 updateLightConfig l AppState {..} =
-  AppState { lights = Data.Map.insert uid l lights
-           , lightIds = if uid `member` lightIds then lightIds else insert uid (1 + maximum (0 : elems lightIds)) lightIds
+  AppState { lights = Map.insert uid l lights
+           , lightIds = if uid `Map.member` lightIds then lightIds else Map.insert uid (1 + maximum (0 : Map.elems lightIds)) lightIds
            , ..}
   where uid = lightAddress l
 
 updateLightState :: Text -> MQTTAPI.LightState -> AppState -> AppState
-updateLightState topic l AppState {..} = AppState {lightStates = Data.Map.insert topic l lightStates, ..}
-
+updateLightState topic l AppState {..} =
+  AppState {lightStates = Map.insert topic l lightStates
+           ,..}
 
 groupMqtt2Hue :: AppState -> GroupConfig -> Group
 groupMqtt2Hue st g@GroupConfig{friendly_name}
@@ -305,7 +367,7 @@ allHueScenes st@AppState{groups}
      Scene{name = name
           ,_type = GroupScene
           ,group = Just (pack $ show gid)
-          ,lights = pack . show <$> Data.Map.keys (lightsMqtt2Hue st (groupLights st g))
+          ,lights = pack . show <$> Map.keys (lightsMqtt2Hue st (groupLights st g))
           ,owner = pack $ show $ gid
           ,recycle = True
           ,locked = True
@@ -313,5 +375,10 @@ allHueScenes st@AppState{groups}
           ,picture = ""
           ,lastupdated = zeroTime
           ,version = 2})
-  | (gid,g@GroupConfig{scenes})<- assocs groups
+  | (gid,g@GroupConfig{scenes})<- Map.assocs groups
   , SceneRef{_id=sid,name} <- scenes ]
+
+groupScenes :: AppState -> Int -> [Int]
+groupScenes AppState{groups} gid = case Map.lookup gid groups of
+  Just GroupConfig {scenes} -> [ sid | SceneRef{_id=sid} <- scenes]
+  Nothing -> []

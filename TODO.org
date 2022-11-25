@@ -1,6 +1,5 @@
-- Wait a moment (so that mqtt has a chance to update its state and
-  inform us back) before answering hue requests.
-- Upon group state query, compute average between lights (?)
+- use logic monad to record statuses
+- get the group state upon starting the server (how?)
 - support Event api?
 
 DON'T:
