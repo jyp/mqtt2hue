@@ -97,12 +97,7 @@ toText = \case
    OffBtn -> "off"
    OtherBtn x -> x
 
-data BtnState = Press | Release | Hold
-instance Show BtnState where
-  show = \case
-    Press -> "press"
-    Release -> "release"
-    Hold -> "hold"
+data BtnState = Press | Release | Hold deriving Show
 
 data ActionType = NoAction | BtnAction BtnType BtnState deriving Show
 
@@ -118,11 +113,6 @@ parseState = \case
   "hold" -> pure Hold
   _ -> fail "fromJSON: mqtt: invalid action state" 
 
-instance ToJSON ActionType where
-  toJSON = \case
-    NoAction -> String ""
-    BtnAction t s -> String (toText t <> " " <> pack (show s))
-
 instance FromJSON ActionType where
   parseJSON = \case
     String "" -> return NoAction
@@ -130,6 +120,10 @@ instance FromJSON ActionType where
                  [btn,state] -> BtnAction (parseBtn btn) <$> parseState state
                  _ -> fail "fromJSON: mqtt: invalid action format"
     _ -> fail "fromJSON: mqtt: invalid action type" 
+
+data SwitchState = SwitchState { action :: ActionType } deriving (Show,Generic)
+
+instance FromJSON SwitchState
   
 data Action = Action
   { brightness :: Maybe Int,
@@ -137,7 +131,6 @@ data Action = Action
     state :: Maybe OnOff,
     color_temp :: Maybe Int,
     scene_recall :: Maybe Int
-    ,action :: Maybe ActionType
   } deriving (Generic, Show)
 
 
@@ -238,3 +231,6 @@ test1 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"b
 
 -- >>> decodeTestFile "examples/MQTT/devices.json" :: IO (Maybe [ZigDevice])
 -- Just [ZigDevice {model_id = Nothing, network_address = 0, ieee_address = 0x00124b0025e1df38, endpoints = fromList [(1,Endpoint {bindings = []}),(2,Endpoint {bindings = []}),(3,Endpoint {bindings = []}),(4,Endpoint {bindings = []}),(5,Endpoint {bindings = []}),(6,Endpoint {bindings = []}),(8,Endpoint {bindings = []}),(10,Endpoint {bindings = []}),(11,Endpoint {bindings = []}),(12,Endpoint {bindings = []}),(13,Endpoint {bindings = []}),(47,Endpoint {bindings = []}),(110,Endpoint {bindings = []}),(242,Endpoint {bindings = []})]},ZigDevice {model_id = Just "LCL001", network_address = 31546, ieee_address = 0x001788010bf4769e, endpoints = fromList [(11,Endpoint {bindings = [Binding {cluster = "genOnOff", target = Target {_id = Nothing, _type = "endpoint"}},Binding {cluster = "genLevelCtrl", target = Target {_id = Nothing, _type = "endpoint"}}]}),(242,Endpoint {bindings = []})]},ZigDevice {model_id = Just "lumi.airrtc.agl001", network_address = 41905, ieee_address = 0x54ef44100057be39, endpoints = fromList [(1,Endpoint {bindings = []})]},ZigDevice {model_id = Just "RWL021", network_address = 15863, ieee_address = 0x0017880106e804ef, endpoints = fromList [(1,Endpoint {bindings = [Binding {cluster = "genScenes", target = Target {_id = Just 1, _type = "group"}},Binding {cluster = "genOnOff", target = Target {_id = Just 1, _type = "group"}},Binding {cluster = "genLevelCtrl", target = Target {_id = Just 1, _type = "group"}}]}),(2,Endpoint {bindings = [Binding {cluster = "manuSpecificUbisysDeviceSetup", target = Target {_id = Nothing, _type = "endpoint"}},Binding {cluster = "genPowerCfg", target = Target {_id = Nothing, _type = "endpoint"}}]})]}]
+
+-- >>> decodeTestFile "examples/MQTT/btnState.json" :: IO (Maybe SwitchState)
+-- Just (SwitchState {action = BtnAction OnBtn Press})

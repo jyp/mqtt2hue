@@ -2,6 +2,6 @@
 Provide hue hub functionality for devices available via MQTT
 
 
-Push the virtual button by sending any string to the topic mqtt2hue/pushbutton
+Push the (virtual) hub button by sending any message to the topic mqtt2hue/pushbutton
 
 
