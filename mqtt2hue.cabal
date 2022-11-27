@@ -42,6 +42,7 @@ executable mqtt2hue
   build-depends: text
   build-depends: yaml
   build-depends: hashable
+  build-depends: mDNSResponder-client
   main-is: Main.hs
   ghc-options: -threaded -rtsopts
   other-modules:

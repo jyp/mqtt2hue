@@ -1,3 +1,6 @@
+- Make server discoverable.
+  - https://hackage.haskell.org/package/mDNSResponder-client-1.0.3/docs/Network-DNS-MDNSResponder-Client.html
+  - reference https://github.com/hass-emulated-hue/core/blob/master/emulated_hue/discovery.py
 - use logic monad to record statuses
 - get the group state upon starting the server (how?)
 - support Event api?

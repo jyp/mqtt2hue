@@ -47,6 +47,7 @@ import HueAPI
 import HueAPIV2
 import MQTTAPI
 import Semaphores
+import Config
 
 data ServerState = ServerState {serverConfig :: ServerConfig
                                ,netConfig :: NetConfig
@@ -114,9 +115,6 @@ verifyUser userId = do
   when (notElem userId (applicationKey <$> users)) $
     throwError err300
 
-mkBridgeId :: NetConfig -> Text
-mkBridgeId NetConfig {..} = mac1 <> "FFFE" <> mac2
- where (mac1,mac2) = Text.splitAt 6 mac
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
@@ -132,9 +130,7 @@ bridgePublicConfig = do
   ,_UTC = now
   ,localtime = now
   ,timezone = "Europe/Stockholm"
-  ,modelid = "BSB001"
-    -- BSB001 is Hue bridge 1st gen
-    -- BSB002 is Hue bridge 2st gen
+  ,modelid = mkModelId
   ,datastoreversion = "131"
   ,swversion = "1953188020"
   -- ,apiversion = "1.53.0"
