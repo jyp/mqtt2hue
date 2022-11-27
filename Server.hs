@@ -114,15 +114,18 @@ verifyUser userId = do
   when (notElem userId (applicationKey <$> users)) $
     throwError err300
 
+mkBridgeId :: NetConfig -> Text
+mkBridgeId NetConfig {..} = mac1 <> "FFFE" <> mac2
+ where (mac1,mac2) = Text.splitAt 6 mac
 
 bridgePublicConfig :: HueHandler Config
 bridgePublicConfig = do
- NetConfig {..} <- askConfig
+ netCfg@NetConfig {..} <- askConfig
  now <- liftIO getCurrentTime
  return $ Config
   {name = "MQTT2hue" -- "Philips Hue"
   ,zigbeechannel = 15
-  ,bridgeid = "ECB5FAFFFE259802" -- ??
+  ,bridgeid = mkBridgeId netCfg
   ,dhcp = True
   ,proxyaddress = "none"
   ,proxyport = 0
