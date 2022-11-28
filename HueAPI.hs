@@ -29,8 +29,11 @@ import Data.Time.Clock
 import Data.Time.LocalTime
 import Data.Text
 import Data.String
-
+import Servant.XML
+import Xmlbf as X
+  
 type HueApi =
+  "description.xml" :> Get '[XML] [Node] :<|>
   "api" :> (     ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUser]
            :<|>                           "config" :> Get '[JSON] Config
            :<|>  Capture "userid" Text :>             Get '[JSON] Everything

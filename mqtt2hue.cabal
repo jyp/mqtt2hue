@@ -14,6 +14,9 @@ build-type:     Simple
 executable mqtt2hue
   default-language: Haskell2010
   build-depends: base
+  build-depends: network
+  build-depends: network-multicast
+  build-depends: network-info
   build-depends: Cabal
   build-depends: directory
   build-depends: blaze-html
@@ -35,6 +38,7 @@ executable mqtt2hue
   build-depends: lucid
   build-depends: containers
   build-depends: servant
+  build-depends: servant-xml
   build-depends: servant-server
   build-depends: aeson
   build-depends: template-haskell
@@ -42,7 +46,9 @@ executable mqtt2hue
   build-depends: text
   build-depends: yaml
   build-depends: hashable
-  build-depends: mDNSResponder-client
+  build-depends: xmlbf
+  build-depends: unordered-containers
+  
   main-is: Main.hs
   ghc-options: -threaded -rtsopts
   other-modules:
@@ -54,3 +60,5 @@ executable mqtt2hue
    MQTTAPI
    MyAeson
    Semaphores
+   Config
+   SSDP

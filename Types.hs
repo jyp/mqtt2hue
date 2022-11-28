@@ -18,16 +18,17 @@ import Data.Aeson
 import Numeric (showHex)
 import Data.Hashable
 import Data.Word
+import Network.Info             (MAC(..))
+import Text.Printf
 
 data ServerConfig = ServerConfig { netInterface :: String,
                                    usersFilePath :: String,
                                    mqttBroker :: String,
-                                   ipaddress,
                                    netmask,
                                    gateway :: Text } deriving Generic
 
 instance FromJSON ServerConfig
-data NetConfig = NetConfig { mac,
+data NetConfig = NetConfig { mac :: MAC,
                              ipaddress,
                              netmask,
                              gateway :: Text } deriving Generic
@@ -48,3 +49,6 @@ instance Show Word128 where
   showsPrec _ (Word128 a b) = showHex a . showHex b
 
 instance Hashable ServerConfig
+
+macHex :: MAC -> String
+macHex (MAC a b c d e f) = printf "%02x%02x%02x%02x%02x%02x" a b c d e f

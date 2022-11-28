@@ -48,7 +48,9 @@ import HueAPIV2
 import MQTTAPI
 import Semaphores
 import Config
-
+import qualified Data.HashMap.Strict as H
+import Xmlbf as X
+import SSDP (getUUIDFromMacAddress)
 data ServerState = ServerState {serverConfig :: ServerConfig
                                ,netConfig :: NetConfig
                                ,appState :: MVar AppState
@@ -61,7 +63,8 @@ data ServerState = ServerState {serverConfig :: ServerConfig
 type HueHandler = ReaderT ServerState Handler
 
 hueServerV1 :: ServerT HueApi HueHandler
-hueServerV1 =  createUser
+hueServerV1 = desc
+        :<|> createUser
         :<|> bridgePublicConfig
         :<|> allConfig
         :<|> bridgeConfig
@@ -83,6 +86,44 @@ hueServerV2 = return (S.fromStepT s) -- FIXME: broken.
   --                                   ,color = _
   --                                   ,color_temperature = _
   --                                   }) _ 
+
+
+desc :: ReaderT ServerState Handler [Node]
+desc = do
+  cfg <- asks netConfig
+  return (description cfg)
+  
+description :: NetConfig -> [Node]
+description NetConfig{..} =
+  element "root" (H.fromList [("xmlns","urn:schemas-upnp-org:device-1-0")]) (
+  element "specVersion" mempty 
+    (element "major" mempty (X.text "1")  <>
+     element "minor" mempty (X.text "0")) <>
+  element "URLBase" mempty (X.text ("http://" <> ip <> ":80/")) <>
+  element "device" mempty dev)
+ where
+   dev = 
+     element "deviceType" mempty (X.text "urn:schemas-upnp-org:device:Basic:1") <>
+     element "friendlyName" mempty (X.text ("Philips hue (" <> ip <> ")")) <>
+     element "manufacturer" mempty (X.text "Signify") <>
+     element "manufacturerURL" mempty (X.text "http://www.philips-hue.com") <>
+     element "modelDescription" mempty (X.text "Philips hue Personal Wireless Lighting") <>
+     element "modelName" mempty (X.text "Philips hue bridge 2015") <>
+     element "modelNumber" mempty (X.text "BSB002") <>
+     element "modelURL" mempty (X.text "http://www.philips-hue.com") <>
+     element "serialNumber" mempty (X.text (Text.Lazy.pack (macHex mac))) <>
+     element "UDN" mempty (X.text "uuid:" <> X.text (fs (getUUIDFromMacAddress mac))) <>
+     element "presentationURL" mempty (X.text "index.html") <>
+     element "iconList" mempty icon
+   icon =
+     element "icon" mempty (
+       element "mimetype" mempty (X.text "image/png") <>
+       element "height" mempty (X.text "48") <>
+       element "width" mempty (X.text "48") <>
+       element "depth" mempty (X.text "24") <>
+       element "url" mempty (X.text "hue_logo_0.png"))
+   ip = fs ipaddress
+   fs = Text.Lazy.fromStrict
 
 hueServer :: ServerT (HueApi :<|> HueAPIV2.HueApiV2) HueHandler
 hueServer = hueServerV1 :<|> hueServerV2
@@ -174,7 +215,8 @@ bridgePublicConfig = do
                    }
   ,starterkitid = ""
   ,whitelist = []
-  , ..
+  ,mac=Text.pack (macHex mac)
+  ,..
   }
 
 askApp :: HueHandler AppState
@@ -256,7 +298,7 @@ appPublish t a = do
 appPublish' :: (ToJSON a) => MQTTClient -> Topic -> a -> IO ()
 appPublish' mc t a = do
   Text.Lazy.putStrLn (">>> " <> Text.Lazy.fromStrict (unTopic t) <> ": " <> encodeToLazyText a)
-  publish mc t (encode a) False
+  publish mc t (Data.Aeson.encode a) False
 
 lightAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction userId lightId action = do
@@ -284,6 +326,9 @@ allConfig userId = do
 
 hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
 hueApi = Proxy
+
+instance ToXml [Node] where
+  toXml = id
 
 hueApp :: ServerState -> Application
 hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
