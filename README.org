@@ -1,8 +1,30 @@
 # mqtt2hue
 Provide hue hub functionality for devices available via MQTT.
 
-- Push the (virtual) hub button by sending any message to the topic mqtt2hue/pushbutton
+- Open ports: 80, 443, 1900 (SSDP)
 
+- Avahi service registration. In nixos:
+
+ services.avahi.extraServiceFiles = {
+   hue = ''
+    <?xml version="1.0" standalone='no'?>
+    <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+    <service-group>
+      <name replace-wildcards="yes">Philips Hue - 218F6D</name>    <!-- 6 digits of mac -->
+      <service>
+        <type>_hue._tcp</type>
+        <port>443</port>
+        <txt-record>bridgeid=9061aefffe218f6d</txt-record>        <!-- bridgeid  -->
+        <txt-record>modelid=BSB002</txt-record>
+      </service>
+    </service-group>
+  '';
+ };
+
+
+- Certificate installation
+
+- Push the (virtual) hub button by sending any message to the topic mqtt2hue/pushbutton
 
 - A switch assigned to a group will cycle through scenes (attached to
 the group) using repeated presses of the ON button.
