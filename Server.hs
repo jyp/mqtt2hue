@@ -40,6 +40,7 @@ import Data.Hashable
 import qualified Data.Yaml
 import Data.Text (Text)
 
+import Debug
 import Servant
 import Logic
 import Types
@@ -136,7 +137,7 @@ bridgeConfig userId = do
 
 createUser :: CreateUser -> HueHandler [CreatedUser]
 createUser CreateUser {devicetype=applicationIdentifier} = do
-  liftIO (Text.putStrLn ("user-creation requested for " <> applicationIdentifier))
+  liftIO (debug (Input Hue) ("user-creation requested for " <> applicationIdentifier))
   but <- asks buttonPressed
   dbVar <- asks database
   dbFname <- asks (usersFilePath . serverConfig)
@@ -286,7 +287,7 @@ runTodos' mc semas as = do
 groupAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 groupAction userId groupId a0 = do
   verifyUser userId
-  liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show groupId) <> " " <> Text.pack (show a0))
+  liftIO $ debug (Input Hue) (Text.pack (show groupId) <> " " <> Text.pack (show a0))
   as <- withAppState (translateGroupAction groupId a0)
   runTodos as
 
@@ -297,13 +298,13 @@ appPublish t a = do
 
 appPublish' :: (ToJSON a) => MQTTClient -> Topic -> a -> IO ()
 appPublish' mc t a = do
-  Text.Lazy.putStrLn (">>> " <> Text.Lazy.fromStrict (unTopic t) <> ": " <> encodeToLazyText a)
+  debug (Output MQTT) (unTopic t <> ": " <> Text.Lazy.toStrict (encodeToLazyText a))
   publish mc t (Data.Aeson.encode a) False
 
 lightAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 lightAction userId lightId action = do
   verifyUser userId
-  liftIO $ Text.putStrLn ("[[[ " <> Text.pack (show lightId) <> " " <> Text.pack (show action))
+  liftIO $ debug (Input Hue) (Text.pack (show lightId) <> " " <> Text.pack (show action))
   a <- askingState (translateLightAction lightId action)
   runTodos [a]
 
@@ -321,7 +322,7 @@ allConfig userId = do
           sensors = mempty
           resoucelinks = mempty
       in Everything {..})
-  liftIO $ Text.Lazy.putStrLn ("]]] " <> encodeToLazyText e)
+  liftIO $ debug (Output Hue) (Text.Lazy.toStrict (encodeToLazyText e))
   return e
 
 hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
@@ -354,32 +355,30 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
   where
     msgReceived mc _ (unTopic -> topic) msg _properties = do
       let msg' = Data.ByteString.Lazy.toStrict msg
-      Text.putStrLn ("<<< " <> topic <> ": " <> decodeUtf8 msg')
+      debug (Input MQTT) (topic <> ": " <> decodeUtf8 msg')
       -- Data.ByteString.Lazy.Char8.putStrLn msg
       case () of
         () | topic == "mqtt2hue/pushbutton" -> do
              now <- getCurrentTime
              b <- tryPutMVar butMv (Word128 (fromIntegral (hash now)) (fromIntegral (hash serverConf)))
-             if b
-               then putStrLn "XXX Button pushed:" 
-               else putStrLn "XXX Button stuck!"
+             debug Button (if b then "Pushed" else "Stuck!")
              _ <- forkIO $ do
                threadDelay (1000*1000*30) -- 30 seconds
                c <- tryTakeMVar butMv
-               case c of
-                 Nothing -> putStrLn "XXX Button bounce"
-                 Just _ -> putStrLn "XXX Button released"
+               debug Button $ case c of
+                 Nothing -> "Bounce"
+                 Just _ -> "Released"
              return ()
         () | "homeassistant/light" `Text.isPrefixOf` topic,
              Just l <- decode msg  -> do
            modifyMVarMasked_ st (return . updateLightConfig l)
-           withMVar st $ \AppState{lights} -> Text.putStrLn ("!!!" <> Text.pack (show lights))
+           withMVar st $ \AppState{lights} -> debug State (Text.pack (show lights))
            let Just t =  mkTopic (state_topic l <> "/get") 
            publish mc t "{\"state\": \"\"}" False -- request light state now
         () | "zigbee2mqtt/" `Text.isPrefixOf` topic,
              Just (l::MQTTAPI.LightState) <- decode msg -> do
           modifyMVarMasked_ st (return . updateLightState topic l)
-          withMVar st $ \AppState{lightStates} -> Text.putStrLn ("!!!" <> Text.pack (show lightStates))
+          withMVar st $ \AppState{lightStates} -> debug State (Text.pack (show lightStates))
           signalSemaphore topic semas
         () | "zigbee2mqtt/" `Text.isPrefixOf` topic,
              Just (sw::MQTTAPI.SwitchState) <- decode msg -> do
@@ -388,10 +387,10 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
         () | topic == "zigbee2mqtt/bridge/devices",
              Just ds <- decode msg -> do
           modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address,d) | d@ZigDevice{ieee_address} <- ds] }))
-          withMVar st $ \AppState{zigDevices} -> Text.putStrLn ("!!!" <> Text.pack (show zigDevices))
+          withMVar st $ \AppState{zigDevices} -> debug State (Text.pack (show zigDevices))
         () | topic == "zigbee2mqtt/bridge/groups",
              Just gs <- decode msg -> do
           modifyMVarMasked_ st (\s -> return (s {groups = fromList [(i,d) | d@MQTTAPI.GroupConfig{_id=i} <- gs] } :: AppState))
-          withMVar st $ \AppState{groups} -> Text.putStrLn ("!!!" <> Text.pack (show groups))
-        _ -> do Text.putStrLn "Unknown kind of message"
+          withMVar st $ \AppState{groups} -> debug State (Text.pack (show groups))
+        _ -> do debug (Input MQTT) "Unknown kind of message"
 

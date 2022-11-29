@@ -27,8 +27,8 @@ import Types (macHex)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import qualified Data.Text.IO as Text
 import Data.Text.Encoding
+import Debug
 -- TODO
 -- * stop instead of kill threads, and send byebye
 -- * catch all exceptions in the threads to make sure they keep running
@@ -79,14 +79,13 @@ messageTypes uuid services = ["upnp:rootdevice", uuid] ++ map serviceUri service
 listen :: Text -> Text -> Text -> [SSDPServiceItem] -> IO ()
 listen uuid url server services = forever $ do
     (decodeUtf8 -> msg, addr) <- receive
-    Text.putStrLn ("{{{ " <> msg)
+    debug (Input SSDP) (Text.replace "\n" "|" msg)
     when ("M-SEARCH" `Text.isPrefixOf` msg) $
       forM_ (messageTypes uuid services) $ \ msgType -> do
-        Text.putStrLn ("??? " <> msgType )
         when (msgType `Text.isInfixOf` msg ||
               "ssdp:all" `Text.isInfixOf` msg) $ do
-          Text.putStrLn "!!! Found"
           sendDiscover uuid url server addr msgType
+
     
 getRFC1123Date :: IO Text
 getRFC1123Date =
@@ -117,8 +116,8 @@ sendDiscover uuid url server addr st = do
 
 sendAlive :: Text -> Text -> Text -> [SSDPServiceItem] -> IO ()
 sendAlive uuid url server services = forever $ do
-  putStrLn "Keepalive types:"
-  print (messageTypes uuid services)
+  -- putStrLn "Keepalive types:"
+  -- print (messageTypes uuid services)
   send $ map (makeAliveMessage uuid url server) (messageTypes uuid services)
   threadDelay 300000000
 
@@ -188,11 +187,11 @@ receive = do
 -----------------------------------------
 
                     
-exampleTypes :: [Text]
-exampleTypes = ["upnp:rootdevice","2f402f80-da50-11e1-9b23-9061ae218f6d","urn:schemas-upnp-org:device:basic:1"]
+-- exampleTypes :: [Text]
+-- exampleTypes = ["upnp:rootdevice","2f402f80-da50-11e1-9b23-9061ae218f6d","urn:schemas-upnp-org:device:basic:1"]
 
-testAlives :: [Text]
-testAlives = map (decodeUtf8 . makeAliveMessage "2f402f80-da50-11e1-9b23-9061ae218f6d" "url" "descr" ) exampleTypes
+-- testAlives :: [Text]
+-- testAlives = map (decodeUtf8 . makeAliveMessage "2f402f80-da50-11e1-9b23-9061ae218f6d" "url" "descr" ) exampleTypes
 
 -- >>> mapM_ Text.putStrLn testAlives
 -- NOTIFY * HTTP/1.1

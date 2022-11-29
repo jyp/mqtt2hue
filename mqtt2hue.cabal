@@ -61,4 +61,6 @@ executable mqtt2hue
    MyAeson
    Semaphores
    Config
+   Debug
    SSDP
+

@@ -52,7 +52,7 @@ configured cfg itf = do
         ssPort           = 80,
         ssURI            = "/description.xml",
         ssProductName    = "IpBridge",
-        ssProductVersion = "1.48.0", -- check consistency with apiversion in Hue API.
+        ssProductVersion = "1.48.0", -- check consistency with apiversion in Hue API. FIXME
         ssServiceItems   = ["urn:schemas-upnp-org:device:basic:1"]
         }
   ssdpHandle <- startSsdpServer hueService
