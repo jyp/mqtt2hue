@@ -24,6 +24,7 @@ import Types
 import System.Environment
 import SSDP
 import Network.Info
+import Network.Wai.Middleware.RequestLogger (logStdoutDev)
 
 -- >>> getNetworkInterfaces
 -- [NetworkInterface {name = "lo", ipv4 = 127.0.0.1, ipv6 = 0:0:0:0:0:0:0:1, mac = 00:00:00:00:00:00},NetworkInterface {name = "enp2s0", ipv4 = 0.0.0.0, ipv6 = 0:0:0:0:0:0:0:0, mac = 30:9c:23:45:56:bc},NetworkInterface {name = "wlp3s0", ipv4 = 192.168.1.20, ipv6 = fe80:0:0:0:a576:416d:17d1:8d22, mac = 90:61:ae:21:8f:6d}]
@@ -40,7 +41,7 @@ main = do
     (itf:_) -> configured cfg itf
 
 configured :: ServerConfig -> NetworkInterface -> IO ()
-configured cfg itf = do    
+configured cfg@ServerConfig{certificatePath} itf = do    
   st <- newMVar blankAppState
   mv <- newEmptyMVar
   button <- newEmptyMVar
@@ -66,9 +67,9 @@ configured cfg itf = do
   db <- newMVar =<< decodeFileThrow (usersFilePath cfg) 
   let s = ServerState cfg netCfg st mv db button semas
   _ <- forkIO (mqttThread s)
-  let app = hueApp s
+  let app = logStdoutDev (hueApp s)
   withStdoutLogger $ \aplogger -> do
-    let tlsOpts = tlsSettings "certificate/cert.pem" "certificate/privkey.pem"
+    let tlsOpts = tlsSettings (certificatePath <> "/cert.pem") (certificatePath <> "/privkey.pem")
         warpOpts = setLogger aplogger $ defaultSettings
     _ <- forkIO $ runSettings (setPort 80 warpOpts) app
     runTLS tlsOpts (setPort 443 $ warpOpts) app
