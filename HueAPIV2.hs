@@ -25,10 +25,12 @@ import Data.Aeson
 import GHC.Generics
 import Servant
 import Data.Time.Clock
+import Data.Text
 
 import MQTTAPI (ColorXY(..))
 
 type HueApiV2 = "eventstream" :> "clip" :> "v2" :> StreamGet NewlineFraming JSON (SourceIO Event)
+ 
   -- TODO /clip/v2/resource
 
 data ResourceType = LightRes | SensorRes deriving (Eq,Show,Generic)
@@ -51,7 +53,9 @@ data Event = Event {
   color_temperature :: Maybe Temperature
 } deriving (Eq,Show,Generic)
 
-
+data BridgeGet = BridgeGet
+  { _id :: Text
+  }
 
 instance ToJSON Brightness
 instance ToJSON Color
