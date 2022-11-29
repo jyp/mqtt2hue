@@ -26,6 +26,7 @@ executable mqtt2hue
   build-depends: net-mqtt
   build-depends: wai
   build-depends: wai-logger
+  build-depends: wai-extra
   build-depends: wai-enforce-https
   build-depends: time
   build-depends: string-conversions
@@ -48,6 +49,7 @@ executable mqtt2hue
   build-depends: hashable
   build-depends: xmlbf
   build-depends: unordered-containers
+  build-depends: http-api-data
   
   main-is: Main.hs
   ghc-options: -threaded -rtsopts

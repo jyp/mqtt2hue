@@ -24,6 +24,7 @@ import Text.Printf
 data ServerConfig = ServerConfig { netInterface :: String,
                                    usersFilePath :: String,
                                    mqttBroker :: String,
+                                   certificatePath :: String,
                                    netmask,
                                    gateway :: Text } deriving Generic
 
