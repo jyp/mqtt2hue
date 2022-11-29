@@ -29,6 +29,7 @@ import Data.Time.Clock
 import MQTTAPI (ColorXY(..))
 
 type HueApiV2 = "eventstream" :> "clip" :> "v2" :> StreamGet NewlineFraming JSON (SourceIO Event)
+  -- TODO /clip/v2/resource
 
 data ResourceType = LightRes | SensorRes deriving (Eq,Show,Generic)
 instance ToJSON ResourceType where

@@ -1,6 +1,0 @@
-[submodule "mDNSResponder-client"]
-	path = mDNSResponder-client
-	url = git@github.com:jyp/mDNSResponder-client.git
-[submodule "network-msg"]
-	path = network-msg
-	url = git@github.com:jyp/network-msg.git

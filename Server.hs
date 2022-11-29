@@ -30,8 +30,6 @@ import Network.URI
 import Network.Wai
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text.Lazy
-import qualified Data.Text.Lazy.IO as Text.Lazy
-import qualified Data.Text.IO as Text
 import Control.Concurrent.MVar
 import Control.Concurrent
 import qualified Servant.Types.SourceT as S
@@ -330,6 +328,7 @@ hueApi = Proxy
 
 instance ToXml [Node] where
   toXml = id
+
 
 hueApp :: ServerState -> Application
 hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
