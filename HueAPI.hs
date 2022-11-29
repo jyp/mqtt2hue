@@ -24,17 +24,21 @@ import Data.Aeson
 import Data.Aeson.Types
 import GHC.Generics
 import Servant
-import Data.Map
+import Data.Map (Map)
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Data.Text
+import Data.Text.Encoding
 import Data.String
 import Servant.XML
 import Xmlbf as X
-  
+import Web.Internal.FormUrlEncoded
+import qualified Data.HashMap.Strict as H
+import Data.ByteString.Lazy (fromStrict)
+
 type HueApi =
   "description.xml" :> Get '[XML] [Node] :<|>
-  "api" :> (     ReqBody '[JSON] CreateUser :> Post '[JSON] [CreatedUser]
+  "api" :> (     ReqBody '[JSON, FormUrlEncoded] CreateUser :> Post '[JSON] [CreatedUser] -- FormUrlEncoded is used in "all4hue" app.
            :<|>                           "config" :> Get '[JSON] Config
            :<|>  Capture "userid" Text :>             Get '[JSON] Everything
            :<|>  Capture "userid" Text :> "config" :> Get '[JSON] Config
@@ -51,6 +55,12 @@ data UserName = UserName {username :: Text}
   deriving (Eq, Show, Generic)
 data CreateUser = CreateUser {devicetype :: Text }  -- , generate_clientkey :: Bool
   deriving (Eq, Show, Generic)
+
+
+instance FromForm CreateUser where
+  fromForm (Form f) = case H.toList f of
+    [(k,_)] | Just d <- decode (fromStrict (encodeUtf8 k)) -> Right d
+    _ -> Left "fromForm: Create User: unknown format"
 
 
 instance FromJSON CreateUser
