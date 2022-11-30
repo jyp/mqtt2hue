@@ -42,6 +42,7 @@ type HueApi =
            :<|>                           "config" :> Get '[JSON] Config
            :<|>  Capture "userid" Text :>             Get '[JSON] Everything
            :<|>  Capture "userid" Text :> "config" :> Get '[JSON] Config
+           :<|>  Capture "userid" Text :> "config" :> ReqBody '[JSON] Value :> Put '[JSON] Text
            :<|>  Capture "userid" Text :> "lights" :> Get '[JSON] (Map Int Light)
            :<|>  Capture "userid" Text :> "lights" :> Capture "lightid" Int :> "state" :> ReqBody '[JSON] Action :> Put '[JSON] Text
            :<|>  Capture "userid" Text :> "groups" :> Get '[JSON] (Map Int Group)

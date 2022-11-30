@@ -62,17 +62,18 @@ data ServerState = ServerState {serverConfig :: ServerConfig
 type HueHandler = ReaderT ServerState Handler
 
 hueServerV1 :: ServerT HueApi HueHandler
-hueServerV1 = desc
-        :<|> createUser
-        :<|> bridgePublicConfig
-        :<|> allConfig
-        :<|> bridgeConfig
-        :<|> configuredLights
-        :<|> lightAction
-        :<|> configuredGroups
-        :<|> configuredGroup
-        :<|> groupAction
-        :<|> configuredScenes
+hueServerV1 = getDescription
+         :<|> createUser
+         :<|> getBridgeConfig
+         :<|> getConfig
+         :<|> bridgeConfig
+         :<|> putConfig
+         :<|> getLights
+         :<|> putLight
+         :<|> getGroups
+         :<|> getGroup
+         :<|> putGroup
+         :<|> getScenes
 
 hueServerV2 :: ServerT HueAPIV2.HueApiV2 HueHandler
 hueServerV2 = return (S.fromStepT s) -- FIXME: broken.
@@ -87,10 +88,10 @@ hueServerV2 = return (S.fromStepT s) -- FIXME: broken.
   --                                   }) _ 
 
 
-desc :: ReaderT ServerState Handler [Node]
-desc = do
+getDescription :: ReaderT ServerState Handler [Node]
+getDescription = do
   cfg <- asks netConfig
-  return (description cfg)
+  return (Server.description cfg)
   
 description :: NetConfig -> [Node]
 description NetConfig{..} =
@@ -131,7 +132,13 @@ hueServer = hueServerV1 :<|> hueServerV2
 bridgeConfig :: Text -> HueHandler Config
 bridgeConfig userId = do
   verifyUser userId
-  bridgePublicConfig
+  getBridgeConfig
+
+putConfig :: Text -> Value -> HueHandler Text
+putConfig userId _ = do
+  verifyUser userId
+  -- A big lie. But this is configured by other means.
+  return "Updated."
 
 createUser :: CreateUser -> HueHandler [CreatedUser]
 createUser CreateUser {devicetype=applicationIdentifier} = do
@@ -156,8 +163,8 @@ verifyUser userId = do
     throwError err300
 
 
-bridgePublicConfig :: HueHandler Config
-bridgePublicConfig = do
+getBridgeConfig :: HueHandler Config
+getBridgeConfig = do
  netCfg@NetConfig {..} <- askConfig
  now <- liftIO getCurrentTime
  return $ Config
@@ -244,23 +251,23 @@ withAppState f = do
     -- putStrLn $ "!!! " <> show st'
     
 
-configuredLights :: Text -> HueHandler (Map Int Light)
-configuredLights userId = do
+getLights :: Text -> HueHandler (Map Int Light)
+getLights userId = do
   verifyUser userId
   askingState allHueLights
 
-configuredGroups :: Text -> HueHandler (Map Int Group)
-configuredGroups userId = do
+getGroups :: Text -> HueHandler (Map Int Group)
+getGroups userId = do
   verifyUser userId
   askingState allHueGroups
 
-configuredScenes :: Text -> HueHandler (Map Int Scene)
-configuredScenes userId = do
+getScenes :: Text -> HueHandler (Map Int Scene)
+getScenes userId = do
   verifyUser userId
   askingState allHueScenes
 
-configuredGroup :: Text -> Int -> HueHandler Group
-configuredGroup userId i = do
+getGroup :: Text -> Int -> HueHandler Group
+getGroup userId i = do
   verifyUser userId
   withAppState (getHueGroup i)
 
@@ -282,8 +289,8 @@ runTodos' mc semas as = do
        -- response. But we have not gotten the update from mqtt yet.
        -- So try wait for such updates before returning, but wait 1sec at most
 
-groupAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
-groupAction userId groupId a0 = do
+putGroup :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
+putGroup userId groupId a0 = do
   verifyUser userId
   liftIO $ debug (Input Hue) (Text.pack (show groupId) <> " " <> Text.pack (show a0))
   as <- withAppState (translateGroupAction groupId a0)
@@ -299,18 +306,18 @@ appPublish' mc t a = do
   debug (Output MQTT) (unTopic t <> ": " <> Text.Lazy.toStrict (encodeToLazyText a))
   publish mc t (Data.Aeson.encode a) False
 
-lightAction :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
-lightAction userId lightId action = do
+putLight :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
+putLight userId lightId action = do
   verifyUser userId
   liftIO $ debug (Input Hue) (Text.pack (show lightId) <> " " <> Text.pack (show action))
   a <- askingState (translateLightAction lightId action)
   runTodos [a]
 
 
-allConfig :: Text -> HueHandler Everything
-allConfig userId = do
+getConfig :: Text -> HueHandler Everything
+getConfig userId = do
   verifyUser userId
-  config <- bridgePublicConfig
+  config <- getBridgeConfig
   e <- askingState (\st ->
       let lights = allHueLights st
           groups = allHueGroups st
