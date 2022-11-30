@@ -43,8 +43,8 @@ import Servant
 import Logic
 import Types
 import HueAPI
-import HueAPIV2
-import MQTTAPI
+import qualified HueAPIV2 as V2
+import MQTTAPI as MQTT
 import Semaphores
 import Config
 import qualified Data.HashMap.Strict as H
@@ -75,10 +75,34 @@ hueServerV1 = getDescription
          :<|> putGroup
          :<|> getScenes
 
-hueServerV2 :: ServerT HueAPIV2.HueApiV2 HueHandler
-hueServerV2 = return (S.fromStepT s) -- FIXME: broken.
+hueServerV2 :: ServerT V2.HueApiV2 HueHandler
+hueServerV2 = eventStreamGet :<|> bridgeGet
+
+okResponse1 :: a -> V2.Response a
+okResponse1 x = V2.Response [x] []
+
+bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet)
+bridgeGet userId = do
+  netCfg <- askConfig
+  verifyUser2 userId
+  return $ okResponse1 $ V2.BridgeGet
+    {_id = _
+    ,id_v1 = ""
+    ,owner = V2.ResourceRef {rid = _
+                            ,rtype = _
+                            }
+    ,bridge_id = mkBridgeId netCfg
+    ,time_zone = V2.TimeZone "Europe/Stockholm" -- FIXME: config
+    ,_type = V2.Bridge
+    }
+  
+
+eventStreamGet :: Maybe Text -> ReaderT ServerState Handler (S.SourceT IO a)
+eventStreamGet userId = do
+  verifyUser2 userId
+  return (S.fromStepT s) -- FIXME: broken.
        where s = S.Effect (threadDelay 1000000 >> return s)
-  -- where s = S.Yield (HueAPIV2.Event {resource = LightRes
+  -- where s = S.Yield (V2.Event {resource = LightRes
   --                                   ,idv1 = _
   --                                   ,idv2 = _
   --                                   ,creationTime = _
@@ -125,7 +149,7 @@ description NetConfig{..} =
    ip = fs ipaddress
    fs = Text.Lazy.fromStrict
 
-hueServer :: ServerT (HueApi :<|> HueAPIV2.HueApiV2) HueHandler
+hueServer :: ServerT (HueApi :<|> V2.HueApiV2) HueHandler
 hueServer = hueServerV1 :<|> hueServerV2
 
 
@@ -154,6 +178,11 @@ createUser CreateUser {devicetype=applicationIdentifier} = do
       Data.Yaml.encodeFile dbFname db
       return db
   return [CreatedUser $ UserName applicationKey]
+
+verifyUser2 :: Maybe Text -> HueHandler ()
+verifyUser2 = \case
+  Just u -> verifyUser u
+  Nothing -> throwError err300
 
 verifyUser :: Text -> HueHandler ()
 verifyUser userId = do
@@ -330,7 +359,7 @@ getConfig userId = do
   liftIO $ debug (Output Hue) (Text.Lazy.toStrict (encodeToLazyText e))
   return e
 
-hueApi :: Proxy (HueApi :<|> HueAPIV2.HueApiV2)
+hueApi :: Proxy (HueApi :<|> V2.HueApiV2)
 hueApi = Proxy
 
 instance ToXml [Node] where
@@ -382,12 +411,12 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
            let Just t =  mkTopic (state_topic l <> "/get") 
            publish mc t "{\"state\": \"\"}" False -- request light state now
         () | "zigbee2mqtt/" `Text.isPrefixOf` topic,
-             Just (l::MQTTAPI.LightState) <- decode msg -> do
+             Just (l::MQTT.LightState) <- decode msg -> do
           modifyMVarMasked_ st (return . updateLightState topic l)
           withMVar st $ \AppState{lightStates} -> debug State (Text.pack (show lightStates))
           signalSemaphore topic semas
         () | "zigbee2mqtt/" `Text.isPrefixOf` topic,
-             Just (sw::MQTTAPI.SwitchState) <- decode msg -> do
+             Just (sw::MQTT.SwitchState) <- decode msg -> do
           msgs <- modifyMVarMasked st $ \s -> return (handleSwitchState topic sw s)
           runTodos' mc semas msgs
         () | topic == "zigbee2mqtt/bridge/devices",
@@ -396,7 +425,7 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
           withMVar st $ \AppState{zigDevices} -> debug State (Text.pack (show zigDevices))
         () | topic == "zigbee2mqtt/bridge/groups",
              Just gs <- decode msg -> do
-          modifyMVarMasked_ st (\s -> return (s {groups = fromList [(i,d) | d@MQTTAPI.GroupConfig{_id=i} <- gs] } :: AppState))
+          modifyMVarMasked_ st (\s -> return (s {groups = fromList [(i,d) | d@MQTT.GroupConfig{_id=i} <- gs] } :: AppState))
           withMVar st $ \AppState{groups} -> debug State (Text.pack (show groups))
         _ -> do debug (Input MQTT) "Unknown kind of message"
 

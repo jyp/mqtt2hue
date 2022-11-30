@@ -9,8 +9,7 @@
 
 module Types where
 
-import Prelude ()
-import Prelude.Compat
+import Prelude
 import Data.Text
 import Data.Time.Clock
 import GHC.Generics
@@ -44,10 +43,15 @@ instance FromJSON UserEntry
 
 type DataBase = [UserEntry]
 
-data Word128 = Word128 Word64 Word64
+data Word128 = Word128 Word64 Word64 deriving (Eq,Ord)
 
 instance Show Word128 where
-  showsPrec _ (Word128 a b) = showHex a . showHex b
+  show (Word128 a b) = s a <> s b
+    where s x = pad (showHex x [])
+          pad = Prelude.reverse . Prelude.take 16 .  (++ repeat '0') . Prelude.reverse
+
+-- >>> show (Word128 0 0)
+-- "00000000000000000000000000000000"
 
 instance Hashable ServerConfig
 

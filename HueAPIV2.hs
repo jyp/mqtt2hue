@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -18,38 +19,49 @@
 module HueAPIV2 where
 
 
-import Prelude ()
+import Prelude (reverse,take)
 import Prelude.Compat
 import MyAeson
 import Data.Aeson
 import GHC.Generics
 import Servant
 import Data.Time.Clock
-import Data.Text
-
+import Data.Text (Text,pack)
+import Data.Word
+import Types (Word128)
 import HueAPI (ColorGamutType(..))
+import Data.List (splitAt,intercalate)
 
+type AppKey = Header "hue-application-key" Text 
+type ClipV2 = "clip" :> "v2" :> AppKey
 type HueApiV2
-  =    "eventstream" :> "clip" :> "v2" :> StreamGet NewlineFraming JSON (SourceIO Event)
-  :<|> "clip" :> "v2" :> "resource" :> "bridge" :> Get '[JSON] BridgeGet
+  =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming JSON (SourceIO Event)
+  :<|> "clip" :> "v2" :> AppKey :> "resource" :> "bridge" :> Get '[JSON] (Response BridgeGet)
+  -- :<|> ClipV2 :> "resource" :> Get '[JSON] ResourceGet
  
--- TODO /clip/v2/resource
 
 data Brightness = Brightness { brightness :: Int } deriving (Eq,Show,Generic)
-data ColorSet = ColorSet { xy :: XY }deriving (Show,Generic)
+data ColorSet = ColorSet { xy :: XY } deriving (Show,Generic)
 data Temperature = Temperature { mirek :: Int }deriving (Eq,Show,Generic)
 
 type Path = Text
 
-data Event = Event {
-  resource :: ResourceType,
-  idv1 :: Path,
-  _id :: Text,
-  creationTime :: UTCTime,
-  dimming :: Brightness,
-  color :: Maybe ColorSet,
-  color_temperature :: Maybe Temperature
-} deriving (Show,Generic)
+data EventData = DimmingEvent
+   -- {"dimming":{"brightness":50.0},"id":"bca61a7f-0471-4ac0-9500-0a43d291179a","id_v1":"/lights/7","owner":{"rid":"6cc8c1fc-13d0-4f26-aafb-e2f8939fcd6a","rtype":"device"},"type":"light"},{"dimming":{"brightness":56.69},"id":"656089a4-df66-4415-9e73-ad0c4d4f82a5","id_v1":"/groups/0","owner":{"rid":"07bfb801-8250-4a40-8878-9d7d09ad0eed","rtype":"bridge_home"},"type":"grouped_light"},{"dimming":{"brightness":50.0},"id":"ac93e5d9-930a-43d9-97ab-fdfdc692ba99","id_v1":"/groups/7","owner":{"rid":"5275317f-dc25-4a07-a35e-3ff349de557d","rtype":"room"},"type":"grouped_light"}
+                deriving (Generic,Show
+                         )
+data Event = Event
+  {creationTime :: UTCTime
+  ,_data :: [EventData]
+  ,_type :: EventType
+  ,_id :: Identifier
+  } deriving (Show,Generic)
+
+data EventType = UpdateEvent deriving Show
+instance ToJSON EventType where
+  toJSON = \case
+    UpdateEvent -> "update"
+
 
 data ResourceType
    = Device
@@ -57,7 +69,7 @@ data ResourceType
    | Room
    | Zone
    | LightResource
-   | Button
+   | ButtonResource
    | TemperatureResource
    | LightLevel
    | Motion
@@ -88,7 +100,7 @@ instance ToJSON ResourceType where
   Room -> "room"
   Zone -> "zone"
   LightResource -> "light"
-  Button -> "button"
+  ButtonResource -> "button"
   TemperatureResource -> "temperature"
   LightLevel -> "light_level"
   Motion -> "motion"
@@ -117,7 +129,19 @@ data ResourceRef = ResourceRef
   {rid :: Identifier
   ,rtype :: ResourceType
   } deriving Generic
-type Identifier = Text
+newtype Identifier = Identifier Word128 deriving (Eq, Ord)
+instance Show Identifier where
+  show (Identifier w) = intercalate "-" [a,b,c,d,e]
+    where (splitAt 8 -> (a,
+           splitAt 4 -> (b,
+           splitAt 4 -> (c,
+           splitAt 4 -> (d,
+                         e))))) = show w
+
+instance ToJSON Identifier where
+  toJSON i = String (pack (show i))
+
+
 data BridgeGet = BridgeGet
   { _id :: Identifier
   , id_v1 :: Path
@@ -280,19 +304,29 @@ data SceneGet = SceneGet {
       auto_dynamic :: Bool,
       _type :: ResourceType
     }
-
+data UpdatePut = UpdatePut
+  {install::Bool
+  ,autoinstall::IsOn
+  } deriving Generic
+instance FromJSON UpdatePut
+data ConfigPut = ConfigPut
+  {
+    swupdate2 :: UpdatePut
+  } deriving Generic
+instance FromJSON ConfigPut
 
 data Error = Error { description :: Text }  deriving (Generic)
-data Hue2Reply a = Hue2Reply
+data Response a = Response
   { _data :: [a]
   , errors :: [Error]
   } 
-
 instance ToJSON Brightness
 instance ToJSON ColorGet
 instance ToJSON ColorSet
 instance ToJSON Temperature
+instance ToJSON EventData
 instance ToJSON Event
+instance FromJSON IsOn
 instance ToJSON IsOn
 instance ToJSON Dimming
 instance ToJSON ColorTempSet
@@ -314,6 +348,6 @@ $(myDeriveToJSON ''BridgeGet)
 $(myDeriveToJSON ''SceneGet)
 $(myDeriveToJSON ''LightGet)
 $(myDeriveToJSON ''DeviceGet)
-$(myDeriveToJSON ''Hue2Reply)
+$(myDeriveToJSON ''Response)
 
 
