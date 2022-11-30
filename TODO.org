@@ -32,8 +32,6 @@
 #+end_src
   
 ** GET /clip/v2/resource
-  Accept: 
-  Status: 404 Not Found 0.000004859s
 #+begin_src javascript
  {
   "errors": [],
