@@ -35,7 +35,7 @@ import Data.List (splitAt,intercalate)
 type AppKey = Header "hue-application-key" Text 
 type ClipV2 = "clip" :> "v2" :> AppKey
 type HueApiV2
-  =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming JSON (SourceIO Event)
+  =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming PlainText (SourceIO Text)
   :<|> "clip" :> "v2" :> AppKey :> "resource" :> "bridge" :> Get '[JSON] (Response BridgeGet)
   -- :<|> ClipV2 :> "resource" :> Get '[JSON] ResourceGet
  

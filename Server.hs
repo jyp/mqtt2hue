@@ -87,13 +87,16 @@ bridgeGet userId = do
   netCfg <- askConfig
   verifyUser2 userId
   return $ okResponse1 $ V2.bridge netCfg
-  
 
-eventStreamGet :: Maybe Text -> ReaderT ServerState Handler (S.SourceT IO a)
+pausedEventStream :: S.StepT IO a
+pausedEventStream = S.Effect (threadDelay 1000000 >> return pausedEventStream)
+
+eventStreamGet :: Maybe Text -> ReaderT ServerState Handler (S.SourceT IO Text)
 eventStreamGet userId = do
   verifyUser2 userId
   return (S.fromStepT s) -- FIXME: broken.
-       where s = S.Effect (threadDelay 1000000 >> return s)
+       where s = S.Yield ": hi" pausedEventStream
+               -- S.Effect (threadDelay 1000000 >> return s)
   -- where s = S.Yield (V2.Event {resource = LightRes
   --                                   ,idv1 = _
   --                                   ,idv2 = _

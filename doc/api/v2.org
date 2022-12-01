@@ -1,6 +1,8 @@
+* /api
 ** PUT /api/f5cd1adcae53fdc0d5384d837465712e/config
   {"swupdate2":{"install":false,"autoinstall":{"on":true}}}
 
+* Clip v2
 ** GET /clip/v2/resource/bridge
 
 #+begin_src javascript
@@ -6751,7 +6753,7 @@
 
 * Events
 
-
+curl --insecure -N -H 'hue-application-key: 345abd2b4d0160e8d5384d837465712e' -H 'Accept: text/event-stream' https://192.168.19.20/eventstream/clip/v2
 
 #+begin_src javascript
 : hi
