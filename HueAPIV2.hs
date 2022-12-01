@@ -28,7 +28,7 @@ import Servant
 import Data.Time.Clock
 import Data.Text (Text,pack)
 import Data.Word
-import Types (Word128)
+import Types
 import HueAPI (ColorGamutType(..))
 import Data.List (splitAt,intercalate)
 
@@ -136,7 +136,7 @@ instance Show Identifier where
            splitAt 4 -> (b,
            splitAt 4 -> (c,
            splitAt 4 -> (d,
-                         e))))) = show w
+                         e))))) = show128 w
 
 instance ToJSON Identifier where
   toJSON i = String (pack (show i))

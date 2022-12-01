@@ -41,6 +41,7 @@ import Data.Text (Text)
 import Debug
 import Servant
 import Logic
+import Logic.HueV2 as V2
 import Types
 import HueAPI
 import qualified HueAPIV2 as V2
@@ -85,14 +86,7 @@ bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet
 bridgeGet userId = do
   netCfg <- askConfig
   verifyUser2 userId
-  return $ okResponse1 $ V2.BridgeGet
-    {_id = error "bridgeGet: TODO"
-    ,id_v1 = ""
-    ,owner = Nothing
-    ,bridge_id = mkBridgeId netCfg
-    ,time_zone = V2.TimeZone "Europe/Stockholm" -- FIXME: config
-    ,_type = V2.Bridge
-    }
+  return $ okResponse1 $ V2.bridge netCfg
   
 
 eventStreamGet :: Maybe Text -> ReaderT ServerState Handler (S.SourceT IO a)
@@ -168,7 +162,7 @@ createUser CreateUser {devicetype=applicationIdentifier} = do
   but <- asks buttonPressed
   dbVar <- asks database
   dbFname <- asks (usersFilePath . serverConfig)
-  applicationKey <- liftIO $ (Text.pack . show <$> readMVar but)
+  applicationKey <- liftIO $ (Text.pack . show128 <$> takeMVar but)
   creationDate <- liftIO getCurrentTime
   liftIO $ modifyMVarMasked_ dbVar $
     \users -> do
@@ -197,13 +191,12 @@ getBridgeConfig = do
  return $ Config
   {name = "MQTT2hue" -- "Philips Hue"
   ,zigbeechannel = 15
-  ,bridgeid = mkBridgeId netCfg
+  ,bridgeid = mkBridgeIdUpper netCfg
   ,dhcp = True
   ,proxyaddress = "none"
   ,proxyport = 0
   ,_UTC = now
   ,localtime = now
-  ,timezone = "Europe/Stockholm"
   ,modelid = mkModelId
   ,datastoreversion = "131"
   ,swversion = "1953188020"
@@ -393,7 +386,7 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
       case () of
         () | topic == "mqtt2hue/pushbutton" -> do
              now <- getCurrentTime
-             b <- tryPutMVar butMv (Word128 (fromIntegral (hash now)) (fromIntegral (hash serverConf)))
+             b <- tryPutMVar butMv (hash128 (now,serverConf))
              debug Button (if b then "Pushed" else "Stuck!")
              _ <- forkIO $ do
                threadDelay (1000*1000*30) -- 30 seconds

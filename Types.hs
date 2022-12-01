@@ -7,7 +7,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Types where
+module Types (module Types, Word128,LargeHashable) where
+
+
 
 import Prelude
 import Data.Text
@@ -16,23 +18,26 @@ import GHC.Generics
 import Data.Aeson
 import Numeric (showHex)
 import Data.Hashable
-import Data.Word
 import Network.Info             (MAC(..))
 import Text.Printf
+import Data.LargeHashable
 
 data ServerConfig = ServerConfig { netInterface :: String,
                                    usersFilePath :: String,
                                    mqttBroker :: String,
                                    certificatePath :: String,
+                                   timezone,
                                    netmask,
                                    gateway :: Text } deriving Generic
-
+instance LargeHashable ServerConfig
 instance FromJSON ServerConfig
 data NetConfig = NetConfig { mac :: MAC,
                              ipaddress,
                              netmask,
+                             timezone,
                              gateway :: Text } deriving Generic
 
+macContents (MAC a b c d e f) = [a,b,c,d,e,f]
 
 data UserEntry = UserEntry
   {applicationKey :: Text
@@ -43,17 +48,21 @@ instance FromJSON UserEntry
 
 type DataBase = [UserEntry]
 
-data Word128 = Word128 Word64 Word64 deriving (Eq,Ord)
+-- data Word128 = Word128 !Word64 !Word64 deriving (Eq,Ord)
 
-instance Show Word128 where
-  show (Word128 a b) = s a <> s b
+
+show128 :: Word128 -> [Char]
+show128 (Word128 a b) = s a <> s b
     where s x = pad (showHex x [])
           pad = Prelude.reverse . Prelude.take 16 .  (++ repeat '0') . Prelude.reverse
 
--- >>> show (Word128 0 0)
--- "00000000000000000000000000000000"
+-- >>> show128 (Word128 1252349 210394)
+-- "0000000000131bfd00000000000335da"
 
 instance Hashable ServerConfig
 
 macHex :: MAC -> String
 macHex (MAC a b c d e f) = printf "%02x%02x%02x%02x%02x%02x" a b c d e f
+
+hash128 :: LargeHashable a => a -> Word128
+hash128 = unMD5Hash . largeHash md5HashAlgorithm

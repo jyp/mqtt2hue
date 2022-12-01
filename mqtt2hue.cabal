@@ -50,6 +50,7 @@ executable mqtt2hue
   build-depends: xmlbf
   build-depends: unordered-containers
   build-depends: http-api-data
+  build-depends: large-hashable
   
   main-is: Main.hs
   ghc-options: -threaded -rtsopts
