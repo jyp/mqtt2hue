@@ -145,7 +145,8 @@ instance ToJSON Identifier where
 data BridgeGet = BridgeGet
   { _id :: Identifier
   , id_v1 :: Path
-  , owner :: ResourceRef
+  , owner :: Maybe ResourceRef
+    -- ^ not listed in API v2 doc, but observed in data sent from Philips bridge
   , bridge_id :: Text
   , time_zone :: TimeZone
   , _type :: ResourceType

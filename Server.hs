@@ -86,11 +86,9 @@ bridgeGet userId = do
   netCfg <- askConfig
   verifyUser2 userId
   return $ okResponse1 $ V2.BridgeGet
-    {_id = _
+    {_id = error "bridgeGet: TODO"
     ,id_v1 = ""
-    ,owner = V2.ResourceRef {rid = _
-                            ,rtype = _
-                            }
+    ,owner = Nothing
     ,bridge_id = mkBridgeId netCfg
     ,time_zone = V2.TimeZone "Europe/Stockholm" -- FIXME: config
     ,_type = V2.Bridge
@@ -300,20 +298,20 @@ getGroup userId i = do
   verifyUser userId
   withAppState (getHueGroup i)
 
-runTodos :: [Todo] -> HueHandler Text.Text
-runTodos as =
+runAgenda :: [AgendaItem] -> HueHandler Text.Text
+runAgenda as =
   do semas <- asks serverSemaphores
      mc <- liftIO . readMVar . mqttState =<< ask
-     liftIO $ runTodos' mc semas as
+     liftIO $ runAgenda' mc semas as
      return "Updated."
      
-runTodos' :: MQTTClient -> MultiSem Text -> [Todo] -> IO ()
-runTodos' mc semas as = do
+runAgenda' :: MQTTClient -> MultiSem Text -> [AgendaItem] -> IO ()
+runAgenda' mc semas as = do
        _ <- forkIO $ forM_ as $ \case 
-         (Todo t a _) -> do
+         (AgendaItem t a _) -> do
            let Just t' = mkTopic t
            appPublish' mc t' a
-       waitForSemaphoresAtMost 1000000 [n | Todo _ _ n <- as] semas
+       waitForSemaphoresAtMost 1000000 [n | AgendaItem _ _ n <- as] semas
        -- the client will ask for states immediately upon recieving
        -- response. But we have not gotten the update from mqtt yet.
        -- So try wait for such updates before returning, but wait 1sec at most
@@ -323,7 +321,7 @@ putGroup userId groupId a0 = do
   verifyUser userId
   liftIO $ debug (Input Hue) (Text.pack (show groupId) <> " " <> Text.pack (show a0))
   as <- withAppState (translateGroupAction groupId a0)
-  runTodos as
+  runAgenda as
 
 appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
 appPublish t a = do
@@ -340,7 +338,7 @@ putLight userId lightId action = do
   verifyUser userId
   liftIO $ debug (Input Hue) (Text.pack (show lightId) <> " " <> Text.pack (show action))
   a <- askingState (translateLightAction lightId action)
-  runTodos [a]
+  runAgenda [a]
 
 
 getConfig :: Text -> HueHandler Everything
@@ -418,7 +416,7 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
         () | "zigbee2mqtt/" `Text.isPrefixOf` topic,
              Just (sw::MQTT.SwitchState) <- decode msg -> do
           msgs <- modifyMVarMasked st $ \s -> return (handleSwitchState topic sw s)
-          runTodos' mc semas msgs
+          runAgenda' mc semas msgs
         () | topic == "zigbee2mqtt/bridge/devices",
              Just ds <- decode msg -> do
           modifyMVarMasked_ st (\s -> return (s {zigDevices = fromList [(ieee_address,d) | d@ZigDevice{ieee_address} <- ds] }))
