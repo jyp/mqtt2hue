@@ -29,7 +29,48 @@ import Types
 import HueAPI (ColorGamutType(..))
 import Data.List (intercalate)
 import Servant.EventStream
-import qualified Data.ByteString.Lazy as Lazy
+import Data.Bits
+
+newtype Identifier = Identifier Word128 deriving (Eq, Ord)
+instance Bits Identifier where
+  Identifier (Word128 a b) `xor` Identifier (Word128 a' b') =
+    Identifier (Word128 (a `xor` a') (b `xor` b'))
+  complement (Identifier (Word128 a b)) = Identifier (Word128 (complement a) (complement b))
+  shift = error "Bits: Identifier: not implemented: shift"
+  rotate = error "Bits: Identifier: not implemented: rotate"
+  bitSize = error "Bits: Identifier: not implemented: bitSize"
+  bitSizeMaybe = error "Bits: Identifier: not implemented: bitSizeMaybe"
+  isSigned = error "Bits: Identifier: not implemented: isSigned"
+  testBit = error "Bits: Identifier: not implemented: testBit"
+  bit = error "Bits: Identifier: not implemented: bit"
+  popCount = error "Bits: Identifier: not implemented: popCount"
+  Identifier (Word128 a b) .&. Identifier (Word128 a' b') =
+    Identifier (Word128 (a .&. a') (b .&. b'))
+
+  Identifier (Word128 a b) .|. Identifier (Word128 a' b') =
+    Identifier (Word128 (a .|. a') (b .|. b'))
+
+fromInt :: Int -> Identifier
+fromInt x = Identifier (Word128 0 (fromIntegral x))
+
+identStore :: Identifier -> Int -> Identifier
+identStore i x = (i .&. complement (fromInt 0xFFFF)) .|. fromInt x
+
+identGet :: Identifier -> Int
+identGet (Identifier (Word128 _ i)) = fromIntegral (i .&. 0xFFFF)
+
+instance Show Identifier where
+  show (Identifier w) = intercalate "-" [a,b,c,d,e]
+    where (splitAt 8 -> (a,
+           splitAt 4 -> (b,
+           splitAt 4 -> (c,
+           splitAt 4 -> (d,
+                         e))))) = show128 w
+
+instance ToJSON Identifier where
+  toJSON i = String (pack (show i))
+
+
 
 type AppKey = Header "hue-application-key" Text 
 type ClipV2 = "clip" :> "v2" :> AppKey
@@ -128,18 +169,6 @@ data ResourceRef = ResourceRef
   {rid :: Identifier
   ,rtype :: ResourceType
   } deriving Generic
-newtype Identifier = Identifier Word128 deriving (Eq, Ord)
-instance Show Identifier where
-  show (Identifier w) = intercalate "-" [a,b,c,d,e]
-    where (splitAt 8 -> (a,
-           splitAt 4 -> (b,
-           splitAt 4 -> (c,
-           splitAt 4 -> (d,
-                         e))))) = show128 w
-
-instance ToJSON Identifier where
-  toJSON i = String (pack (show i))
-
 
 data BridgeGet = BridgeGet
   { _id :: Identifier
@@ -304,6 +333,8 @@ data SceneGet = SceneGet {
       auto_dynamic :: Bool,
       _type :: ResourceType
     }
+
+
 data UpdatePut = UpdatePut
   {install::Bool
   ,autoinstall::IsOn
@@ -349,5 +380,6 @@ $(myDeriveToJSON ''SceneGet)
 $(myDeriveToJSON ''LightGet)
 $(myDeriveToJSON ''DeviceGet)
 $(myDeriveToJSON ''Response)
+
 
 

@@ -7,7 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Types (module Types, Word128,LargeHashable) where
+module Types (module Types, Word128(..),LargeHashable) where
 
 
 
