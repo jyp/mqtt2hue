@@ -19,23 +19,22 @@
 module HueAPIV2 where
 
 
-import Prelude (reverse,take)
-import Prelude.Compat
 import MyAeson
 import Data.Aeson
 import GHC.Generics
 import Servant
 import Data.Time.Clock
 import Data.Text (Text,pack)
-import Data.Word
 import Types
 import HueAPI (ColorGamutType(..))
-import Data.List (splitAt,intercalate)
+import Data.List (intercalate)
+import Servant.EventStream
+import qualified Data.ByteString.Lazy as Lazy
 
 type AppKey = Header "hue-application-key" Text 
 type ClipV2 = "clip" :> "v2" :> AppKey
 type HueApiV2
-  =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming PlainText (SourceIO Text)
+  =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming EventStream (SourceIO SSE)
   :<|> "clip" :> "v2" :> AppKey :> "resource" :> "bridge" :> Get '[JSON] (Response BridgeGet)
   -- :<|> ClipV2 :> "resource" :> Get '[JSON] ResourceGet
  

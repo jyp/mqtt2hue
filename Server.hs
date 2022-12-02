@@ -19,7 +19,7 @@ module Server where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
-import qualified Data.ByteString.Lazy
+import qualified Data.ByteString.Lazy as Lazy
 import Data.Aeson.Text
 import Data.Map
 import Data.Time.Clock
@@ -34,12 +34,12 @@ import Control.Concurrent.MVar
 import Control.Concurrent
 import qualified Servant.Types.SourceT as S
 import Data.Text.Encoding
-import Data.Hashable
 import qualified Data.Yaml
 import Data.Text (Text)
 
 import Debug
 import Servant
+import Servant.EventStream
 import Logic
 import Logic.HueV2 as V2
 import Types
@@ -91,11 +91,11 @@ bridgeGet userId = do
 pausedEventStream :: S.StepT IO a
 pausedEventStream = S.Effect (threadDelay 1000000 >> return pausedEventStream)
 
-eventStreamGet :: Maybe Text -> ReaderT ServerState Handler (S.SourceT IO Text)
+eventStreamGet :: Maybe Text -> ReaderT ServerState Handler (S.SourceT IO SSE)
 eventStreamGet userId = do
   verifyUser2 userId
   return (S.fromStepT s) -- FIXME: broken.
-       where s = S.Yield ": hi" pausedEventStream
+       where s = S.Yield HelloEv pausedEventStream
                -- S.Effect (threadDelay 1000000 >> return s)
   -- where s = S.Yield (V2.Event {resource = LightRes
   --                                   ,idv1 = _
@@ -383,7 +383,7 @@ mqttThread (ServerState serverConf@ServerConfig{..} _ st mv _ butMv semas) = mdo
 
   where
     msgReceived mc _ (unTopic -> topic) msg _properties = do
-      let msg' = Data.ByteString.Lazy.toStrict msg
+      let msg' = Lazy.toStrict msg
       debug (Input MQTT) (topic <> ": " <> decodeUtf8 msg')
       -- Data.ByteString.Lazy.Char8.putStrLn msg
       case () of
