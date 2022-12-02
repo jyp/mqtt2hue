@@ -66,4 +66,8 @@ executable mqtt2hue
    Config
    Debug
    SSDP
-
+   Logic.Automation
+   Logic.Common
+   Logic.HueV1
+   Logic.HueV2
+   Servant.EventStream
