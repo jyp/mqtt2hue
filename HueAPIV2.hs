@@ -209,6 +209,7 @@ data Archetype
    | SingleSpot
    | SultanBulb
    | VintageBulb
+   | Hallway
    | UnknownArchetype
   deriving (Show, Eq)
 instance ToJSON Archetype where
@@ -228,6 +229,7 @@ instance ToJSON Archetype where
    SingleSpot          -> "single_spot" 
    SultanBulb          -> "sultan_bulb" 
    VintageBulb         -> "vintage_bulb" 
+   Hallway -> "hallway"
    UnknownArchetype    -> "unknown_archetype"
    
 data ProductData = ProductData {

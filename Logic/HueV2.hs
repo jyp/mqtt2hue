@@ -48,28 +48,108 @@ bridge cfg = BridgeGet
     }  
 
 
+-- mkDevice :: ZigDevice -> DeviceGet
+
+-- mkLight 
+--   {
+--       "id": "bca61a7f-0471-4ac0-9500-0a43d291179a",
+--       "id_v1": "/lights/7",
+--       "owner": {
+--         "rid": "6cc8c1fc-13d0-4f26-aafb-e2f8939fcd6a",
+--         "rtype": "device"
+--       },
+--       "metadata": {
+--         "name": "Gledopto controller Wardrobe",
+--         "archetype": "ceiling_round"
+--       },
+--       "on": {
+--         "on": true
+--       },
+--       "dimming": {
+--         "brightness": 100.0
+--       },
+--       "dimming_delta": {},
+--       "color_temperature": {
+--         "mirek": 366,
+--         "mirek_valid": true,
+--         "mirek_schema": {
+--           "mirek_minimum": 155,
+--           "mirek_maximum": 495
+--         }
+--       },
+--       "color_temperature_delta": {},
+--       "color": {
+--         "xy": {
+--           "x": 0.4584,
+--           "y": 0.41
+--         }
+--       },
+--       "dynamics": {
+--         "status": "none",
+--         "status_values": [
+--           "none"
+--         ],
+--         "speed": 0.0,
+--         "speed_valid": false
+--       },
+--       "alert": {
+--         "action_values": [
+--           "breathe"
+--         ]
+--       },
+--       "signaling": {},
+--       "mode": "normal",
+--       "type": "light"
+--     }
+
+-- {
+--       "id": "c2b42ff1-9e26-4ca1-9891-648dec038994",
+--       "id_v1": "/groups/9",
+--       "owner": {
+--         "rid": "d8639195-dbe2-41a2-8a53-1d7b3930ae58",
+--         "rtype": "room"
+--       },
+--       "on": {
+--         "on": false
+--       },
+--       "dimming": {
+--         "brightness": 0.0
+--       },
+--       "dimming_delta": {},
+--       "color_temperature": {},
+--       "color_temperature_delta": {},
+--       "alert": {
+--         "action_values": [
+--           "breathe"
+--         ]
+--       },
+--       "signaling": {},
+--       "dynamics": {},
+--       "type": "grouped_light"
+--     }
+
+-- mkRoom ::  AppState -> GroupConfig -> GroupGet
+-- mkRoom  st@AppState{..} g@GroupConfig{..} = GroupGet
+--   {_id = identStore (hashableToId friendly_name) _id
+--   ,id_v1 = "/groups/" <> pack (show _id)
+--   ,children = [ResourceRef (mkDeviceId address) HueAPIV2.Device ] -- devices
+--   ,services = [] -- one grouped light for the exact same thing.
+--   ,metadata = ArchetypeMeta {name = friendly_name
+--                             ,archetype = case () of
+--                                 _ | "office" `isInfixOf` nm -> Office
+--                                 _ | "bedroom" `isInfixOf` nm -> Bedroom
+--                                 _ | "garage" `isInfixOf` nm -> Garage
+--                                 _ | "hallway" `isInfixOf` nm -> Hallway
+--                                 _ | "wardrobe" `isInfixOf` nm -> Hallway
+--                                 _ | "kitchen" `isInfixOf` nm -> Kitchen
+--                                 _ | "attic" `isInfixOf` nm -> Attic
+--                                 _ | "living" `isInfixOf` nm -> LivingRoom
+--                                 _ -> Bedroom
+--                             }
+--   ,_type = Room
+--   } where
+--         nm = toCaseFold friendly_name
 {-
--- device 
-mkRoomWithLights ::  AppState -> -> [MQTT.LightConfig] -> GroupGet
-mkRoomWithLights  st@AppState{..}  ls = GroupGet
-  {_id = identStore (hashableToId name)
-  ,id_v1 = "/groups/" <> _
-  ,children = [_] -- devices
-  ,services = []
-  ,metadata = ArchetypeMeta {name = friendly_name
-                            ,archetype = case () of
-                                _ | "office" `isInfixOf` nm -> "office"
-                                _ | "bedroom" `isInfixOf` nm -> "bedroom"
-                                _ | "garage" `isInfixOf` nm -> "garage"
-                                _ | "hallway" `isInfixOf` nm -> "hallway"
-                                _ | "wardrobe" `isInfixOf` nm -> "hallway"
-                                _ | "kitchen" `isInfixOf` nm -> "kitchen"
-                                _ | "attic" `isInfixOf` nm -> "attic"
-                                _ | "living" `isInfixOf` nm -> "living_room"
-                            }
-  ,_type = Room
-  } where
-        nm = toCaseFold friendly_name
 
 getHueGroups :: AppState -> [GroupGet]
 getHueGroups st@AppState{groups} = [mkRoom i g | (i,g) <- Map.assocs groups ]
