@@ -16,7 +16,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module HueAPIV2 where
+module HueAPIV2 (module HueAPIV2, module ReExport) where
 
 
 import MyAeson
@@ -26,7 +26,7 @@ import Servant
 import Data.Time.Clock
 import Data.Text (Text,pack)
 import Types
-import HueAPI (ColorGamutType(..))
+import HueAPI as ReExport (ColorGamutType(..)) 
 import Data.List (intercalate)
 import Servant.EventStream
 import Data.Bits
@@ -262,16 +262,16 @@ data MirekSchema = MirekSchema {
           mirek_maximum :: Int
         }   deriving (Generic)
 data ColorTemp = ColorTemp {
-        -- "mirek": null,
-        mirek_valid :: Bool,
+        mirek :: Int,
+        mirek_valid :: Bool, -- true if light is in full color mode
         mirek_schema :: MirekSchema
       } deriving (Generic)
 data XY = XY {x, y :: Float} deriving (Generic, Show)
 data Gamut = Gamut {red , green , blue :: XY} deriving (Generic,Show)
 data ColorGet = ColorGet {
         xy :: XY,
-        gamut :: Gamut,
-        gamut_type:: ColorGamutType
+        gamut :: Maybe Gamut,
+        gamut_type:: Maybe ColorGamutType
       } deriving (Generic)
      
 data Dynamics = Dynamics {
@@ -293,16 +293,16 @@ data LightGet = LightGet {
       owner :: ResourceRef,
       metadata :: ArchetypeMeta,
       on :: IsOn,
-      dimming :: Dimming,
+      dimming :: Maybe Dimming,
       -- "dimming_delta": {},
-      color_temperature :: ColorTemp,
+      color_temperature :: Maybe ColorTemp,
       -- "color_temperature_delta": {},
-      color :: ColorGet,
+      color :: Maybe ColorGet,
       dynamics :: Dynamics,
       alert:: Alert,
       -- "signaling": {},
       mode:: Text, -- "normal"
-      effects :: Effects,
+      effects :: Maybe Effects,
       _type :: ResourceType
     }
 data SceneMeta = SceneMeta {

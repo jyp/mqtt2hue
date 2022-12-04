@@ -49,8 +49,8 @@ bridge cfg = BridgeGet
     }  
 
 
-mkLightDevice :: Int -> ZigDevice -> Device -> DeviceGet
-mkLightDevice v1Id ZigDevice{..} MQTT.Device{name=prodname,..} = DeviceGet
+mkLightDevice :: ResourceRef -> Int -> ZigDevice -> Device -> DeviceGet
+mkLightDevice lightRef v1Id ZigDevice{..} MQTT.Device{name=prodname,..} = DeviceGet
   { _id = hashableToId ieee_address
   , id_v1 = "/light/" <> pack (show v1Id) 
   , product_data = ProductData
@@ -66,29 +66,53 @@ mkLightDevice v1Id ZigDevice{..} MQTT.Device{name=prodname,..} = DeviceGet
     { name = friendly_name
     , archetype = SultanBulb -- FIXME
     }
-  , services = [
-      -- light (perhaps one per endpoint?)
-     ]
+  , services = [lightRef]
   , _type = HueAPIV2.Device
   }
 
-mkLightService v1Id owner LightConfig{..} LightState{state} = LightGet
-  {_id = hashableToId unique_id --  Identifier,
+mkLightService v1Id owner fname
+  LightConfig{..}
+  LightState{brightness=bri,state,color,color_temp,color_mode=mode} = LightGet
+  {_id = identStore (hashableToId unique_id) v1Id --  Identifier,
   ,id_v1 = "/light/" <> pack (show v1Id) --  Path,
   ,owner = owner --  ResourceRef,       -- owner is light device
   ,metadata = ArchetypeMeta
-              { name = _
+              { name = fname
               , archetype = SultanBulb -- FIXME
               }
   ,on = IsOn (state == ON) --  IsOn,
-  ,dimming = Dimming{} --  Dimming,
-  ,color_temperature = ColorTemp {} --  ColorTemp,
-  ,color = ColorGet {} --  ColorGet,
-  ,dynamics = Dynamics {} --  Dynamics,
-  ,alert= Alert {} --  Alert,
+  ,dimming = fmap (\b -> Dimming{brightness = (100.0 / 254) * fromIntegral b
+                                 ,min_dim_level = Nothing -- fixme
+                                 }) bri
+  ,color_temperature =
+   if TemperatureMode `elem` supported_color_modes
+     then
+      Just ColorTemp
+      {mirek = fromMaybe 200 color_temp
+      ,mirek_valid = isJust color_temp && (mode == Just TemperatureMode)
+      ,mirek_schema = MirekSchema
+        {mirek_minimum = fromMaybe 153 min_mireds
+        ,mirek_maximum = fromMaybe 450 max_mireds
+        }
+    } else Nothing
+  ,color = if XYMode `elem` supported_color_modes
+           then Just ColorGet
+                {xy = case color of
+                    Just (ColorXY {x,y}) -> XY x y
+                    Nothing -> XY 0.5 0.5
+                ,gamut = Nothing
+                ,gamut_type = Nothing
+                }
+           else Nothing
+  ,dynamics = Dynamics {status = "none"
+                       ,status_values = ["none"]
+                       ,speed = 0
+                       ,speed_valid = False
+                       } --  Dynamics,
+  ,alert= Alert {action_values = ["breathe"]}
   ,mode = "normal" -- ???
-  ,effects = Effects {} --  Effects,
-  ,_type = LightResource --  ResourceType
+  ,effects = Nothing
+  ,_type = LightResource
   }
 
 
