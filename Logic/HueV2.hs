@@ -49,124 +49,77 @@ bridge cfg = BridgeGet
     }  
 
 
-mkLightDevice :: ResourceRef -> Int -> ZigDevice -> Device -> DeviceGet
-mkLightDevice lightRef v1Id ZigDevice{..} MQTT.Device{name=prodname,..} = DeviceGet
-  { _id = hashableToId ieee_address
-  , id_v1 = "/light/" <> pack (show v1Id) 
-  , product_data = ProductData
-    { certified = False
-    , software_version = sw_version
-    , hardware_platform_type = "1166-116" -- Innr, FIXME
-    , model_id = fromMaybe "ABC123" model_id
-    , manufacturer_name = manufacturer
-    , product_name = prodname
-    , product_archetype = ClassicBulb -- FIXME
+mkLight :: Int -> ZigDevice -> LightConfig -> LightState -> (DeviceGet, LightGet)
+mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
+        l@LightConfig{unique_id,device} ls =
+  (mkLightDevice zdev device, mkLightService l ls) where
+  serviceId = identStore (hashableToId unique_id) v1Id
+  deviceId = hashableToId ieee_address
+  mkLightDevice :: ZigDevice -> Device -> DeviceGet
+  mkLightDevice  ZigDevice{model_id} MQTT.Device{name=prodname,..} = DeviceGet
+    { _id = deviceId
+    , id_v1 = "/light/" <> pack (show v1Id) 
+    , product_data = ProductData
+      { certified = False
+      , software_version = sw_version
+      , hardware_platform_type = "1166-116" -- Innr, FIXME
+      , model_id = fromMaybe "ABC123" model_id
+      , manufacturer_name = manufacturer
+      , product_name = prodname
+      , product_archetype = ClassicBulb -- FIXME
+      }
+    , metadata = ArchetypeMeta
+      { name = friendly_name
+      , archetype = SultanBulb -- FIXME
+      }
+    , services = [ResourceRef serviceId LightResource]
+    , _type = DeviceResource
     }
-  , metadata = ArchetypeMeta
-    { name = friendly_name
-    , archetype = SultanBulb -- FIXME
-    }
-  , services = [lightRef]
-  , _type = HueAPIV2.Device
-  }
 
-mkLightService v1Id owner fname
-  LightConfig{..}
-  LightState{brightness=bri,state,color,color_temp,color_mode=mode} = LightGet
-  {_id = identStore (hashableToId unique_id) v1Id --  Identifier,
-  ,id_v1 = "/light/" <> pack (show v1Id) --  Path,
-  ,owner = owner --  ResourceRef,       -- owner is light device
-  ,metadata = ArchetypeMeta
-              { name = fname
-              , archetype = SultanBulb -- FIXME
-              }
-  ,on = IsOn (state == ON) --  IsOn,
-  ,dimming = fmap (\b -> Dimming{brightness = (100.0 / 254) * fromIntegral b
-                                 ,min_dim_level = Nothing -- fixme
-                                 }) bri
-  ,color_temperature =
-   if TemperatureMode `elem` supported_color_modes
-     then
-      Just ColorTemp
-      {mirek = fromMaybe 200 color_temp
-      ,mirek_valid = isJust color_temp && (mode == Just TemperatureMode)
-      ,mirek_schema = MirekSchema
-        {mirek_minimum = fromMaybe 153 min_mireds
-        ,mirek_maximum = fromMaybe 450 max_mireds
-        }
-    } else Nothing
-  ,color = if XYMode `elem` supported_color_modes
-           then Just ColorGet
-                {xy = case color of
-                    Just (ColorXY {x,y}) -> XY x y
-                    Nothing -> XY 0.5 0.5
-                ,gamut = Nothing
-                ,gamut_type = Nothing
+  mkLightService
+    LightConfig{supported_color_modes,min_mireds,max_mireds}
+    LightState{brightness=bri,state,color,color_temp,color_mode=mode} = LightGet
+    {_id = serviceId
+    ,id_v1 = "/light/" <> pack (show v1Id) --  Path,
+    ,owner = ResourceRef deviceId DeviceResource
+    ,metadata = ArchetypeMeta
+                { name = friendly_name
+                , archetype = SultanBulb -- FIXME
                 }
-           else Nothing
-  ,dynamics = Dynamics {status = "none"
-                       ,status_values = ["none"]
-                       ,speed = 0
-                       ,speed_valid = False
-                       } --  Dynamics,
-  ,alert= Alert {action_values = ["breathe"]}
-  ,mode = "normal" -- ???
-  ,effects = Nothing
-  ,_type = LightResource
-  }
-
-
--- mkLight 
---   {
---       "id": "bca61a7f-0471-4ac0-9500-0a43d291179a",
---       "id_v1": "/lights/7",
---       "owner": {
---         "rid": "6cc8c1fc-13d0-4f26-aafb-e2f8939fcd6a",
---         "rtype": "device"
---       },
---       "metadata": {
---         "name": "Gledopto controller Wardrobe",
---         "archetype": "ceiling_round"
---       },
---       "on": {
---         "on": true
---       },
---       "dimming": {
---         "brightness": 100.0
---       },
---       "dimming_delta": {},
---       "color_temperature": {
---         "mirek": 366,
---         "mirek_valid": true,
---         "mirek_schema": {
---           "mirek_minimum": 155,
---           "mirek_maximum": 495
---         }
---       },
---       "color_temperature_delta": {},
---       "color": {
---         "xy": {
---           "x": 0.4584,
---           "y": 0.41
---         }
---       },
---       "dynamics": {
---         "status": "none",
---         "status_values": [
---           "none"
---         ],
---         "speed": 0.0,
---         "speed_valid": false
---       },
---       "alert": {
---         "action_values": [
---           "breathe"
---         ]
---       },
---       "signaling": {},
---       "mode": "normal",
---       "type": "light"
---     }
+    ,on = IsOn (state == ON) --  IsOn,
+    ,dimming = fmap (\b -> Dimming{brightness = (100.0 / 254) * fromIntegral b
+                                   ,min_dim_level = Nothing -- fixme
+                                   }) bri
+    ,color_temperature =
+     if TemperatureMode `elem` supported_color_modes
+       then
+        Just ColorTemp
+        {mirek = fromMaybe 200 color_temp
+        ,mirek_valid = isJust color_temp && (mode == Just TemperatureMode)
+        ,mirek_schema = MirekSchema
+          {mirek_minimum = fromMaybe 153 min_mireds
+          ,mirek_maximum = fromMaybe 450 max_mireds
+          }
+      } else Nothing
+    ,color = if XYMode `elem` supported_color_modes
+             then Just ColorGet
+                  {xy = case color of
+                      Just (ColorXY {x,y}) -> XY x y
+                      Nothing -> XY 0.5 0.5
+                  ,gamut = Nothing
+                  ,gamut_type = Nothing
+                  }
+             else Nothing
+    ,dynamics = Dynamics {status = "none"
+                         ,status_values = ["none"]
+                         ,speed = 0
+                         ,speed_valid = False
+                         } --  Dynamics,
+    ,alert= Alert {action_values = ["breathe"]}
+    ,mode = "normal" -- ???
+    ,effects = Nothing
+    ,_type = LightResource
+    }
 
 -- {
 --       "id": "c2b42ff1-9e26-4ca1-9891-648dec038994",
@@ -194,7 +147,7 @@ mkLightService v1Id owner fname
 --       "type": "grouped_light"
 --     }
 
--- mkRoom ::  AppState -> GroupConfig -> GroupGet
+-- mkRoom ::  AppState -> GroupConfig -> (GroupGet, LightGet)
 -- mkRoom  st@AppState{..} g@GroupConfig{..} = GroupGet
 --   {_id = identStore (hashableToId friendly_name) _id
 --   ,id_v1 = "/groups/" <> pack (show _id)

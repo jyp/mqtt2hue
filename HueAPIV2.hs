@@ -104,7 +104,7 @@ instance ToJSON EventType where
 
 
 data ResourceType
-   = Device
+   = DeviceResource
    | BridgeHome
    | Room
    | Zone
@@ -135,7 +135,7 @@ data ResourceType
 
 instance ToJSON ResourceType where
  toJSON x = String $ case x of
-  Device -> "device"
+  DeviceResource -> "device"
   BridgeHome -> "bridge_home"
   Room -> "room"
   Zone -> "zone"
