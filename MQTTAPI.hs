@@ -25,6 +25,7 @@ import MyAeson
 import Text.Read (readMaybe)
 import Data.Word (Word64)
 import Numeric (showHex)
+import Types
 
 data ColorXY = ColorXY {x,y :: Float, hue, saturation :: Maybe Int} deriving (Generic, Show, Eq)
 instance FromJSON ColorXY
@@ -36,7 +37,7 @@ instance Show IEEEAddress where
     where pad = Prelude.reverse . Prelude.take 16 .  (++ repeat '0') . Prelude.reverse
 instance Read IEEEAddress where
   readsPrec d s = [(IEEEAddress x,r) | (x,r) <- readsPrec d s]
-
+instance LargeHashable IEEEAddress
 -- >>> readMaybe "0x001788010bf4769e" :: Maybe IEEEAddress
 -- Just 0x001788010bf4769e
 
@@ -50,7 +51,7 @@ instance ToJSON IEEEAddress where
   toJSON x = String (pack (show x))
 
 data ZigDevice = ZigDevice
-  {model_id :: Maybe String -- model_id missing for controller
+  {model_id :: Maybe Text -- model_id missing for controller
   ,network_address :: Int
   ,ieee_address :: IEEEAddress
   ,endpoints :: Map Int Endpoint

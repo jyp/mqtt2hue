@@ -30,9 +30,10 @@ import Data.LargeHashable.Class
 import Config
 import Data.Bits
 
-zigDevToId :: MQTT.ZigDevice -> Identifier
-zigDevToId ZigDevice{network_address,ieee_address=IEEEAddress w}
-  = Identifier (Word128 w (fromIntegral network_address))
+
+-- zigDevToId :: MQTT.ZigDevice -> Identifier
+-- zigDevToId ZigDevice{network_address,ieee_address=IEEEAddress w}
+--   = Identifier (Word128 w (fromIntegral network_address))
 
 hashableToId :: LargeHashable a => a -> Identifier
 hashableToId = Identifier . hash128
@@ -48,7 +49,48 @@ bridge cfg = BridgeGet
     }  
 
 
--- mkDevice :: ZigDevice -> DeviceGet
+mkLightDevice :: Int -> ZigDevice -> Device -> DeviceGet
+mkLightDevice v1Id ZigDevice{..} MQTT.Device{name=prodname,..} = DeviceGet
+  { _id = hashableToId ieee_address
+  , id_v1 = "/light/" <> pack (show v1Id) 
+  , product_data = ProductData
+    { certified = False
+    , software_version = sw_version
+    , hardware_platform_type = "1166-116" -- Innr, FIXME
+    , model_id = fromMaybe "ABC123" model_id
+    , manufacturer_name = manufacturer
+    , product_name = prodname
+    , product_archetype = ClassicBulb -- FIXME
+    }
+  , metadata = ArchetypeMeta
+    { name = friendly_name
+    , archetype = SultanBulb -- FIXME
+    }
+  , services = [
+      -- light (perhaps one per endpoint?)
+     ]
+  , _type = HueAPIV2.Device
+  }
+
+mkLightService v1Id owner LightConfig{..} LightState{state} = LightGet
+  {_id = hashableToId unique_id --  Identifier,
+  ,id_v1 = "/light/" <> pack (show v1Id) --  Path,
+  ,owner = owner --  ResourceRef,       -- owner is light device
+  ,metadata = ArchetypeMeta
+              { name = _
+              , archetype = SultanBulb -- FIXME
+              }
+  ,on = IsOn (state == ON) --  IsOn,
+  ,dimming = Dimming{} --  Dimming,
+  ,color_temperature = ColorTemp {} --  ColorTemp,
+  ,color = ColorGet {} --  ColorGet,
+  ,dynamics = Dynamics {} --  Dynamics,
+  ,alert= Alert {} --  Alert,
+  ,mode = "normal" -- ???
+  ,effects = Effects {} --  Effects,
+  ,_type = LightResource --  ResourceType
+  }
+
 
 -- mkLight 
 --   {
