@@ -48,13 +48,16 @@ bridge cfg = BridgeGet
     ,_type = Bridge
     }  
 
+mkDeviceRef :: IEEEAddress -> ResourceRef
+mkDeviceRef addr = ResourceRef (hashableToId addr) DeviceResource
+
 
 mkLight :: Int -> ZigDevice -> LightConfig -> LightState -> (DeviceGet, LightGet)
 mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
         l@LightConfig{unique_id,device} ls =
   (mkLightDevice zdev device, mkLightService l ls) where
   serviceId = identStore (hashableToId unique_id) v1Id
-  deviceId = hashableToId ieee_address
+  deviceRef@ResourceRef{rid = deviceId} = mkDeviceRef ieee_address
   mkLightDevice :: ZigDevice -> Device -> DeviceGet
   mkLightDevice  ZigDevice{model_id} MQTT.Device{name=prodname,..} = DeviceGet
     { _id = deviceId
@@ -81,7 +84,7 @@ mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
     LightState{brightness=bri,state,color,color_temp,color_mode=mode} = LightGet
     {_id = serviceId
     ,id_v1 = "/light/" <> pack (show v1Id) --  Path,
-    ,owner = ResourceRef deviceId DeviceResource
+    ,owner = deviceRef
     ,metadata = ArchetypeMeta
                 { name = friendly_name
                 , archetype = SultanBulb -- FIXME
@@ -147,11 +150,12 @@ mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
 --       "type": "grouped_light"
 --     }
 
--- mkRoom ::  AppState -> GroupConfig -> (GroupGet, LightGet)
+
+-- mkRoom :: AppState -> GroupConfig -> (GroupGet, LightGet)
 -- mkRoom  st@AppState{..} g@GroupConfig{..} = GroupGet
 --   {_id = identStore (hashableToId friendly_name) _id
 --   ,id_v1 = "/groups/" <> pack (show _id)
---   ,children = [ResourceRef (mkDeviceId address) HueAPIV2.Device ] -- devices
+--   ,children = [mkDeviceRef _ | _ <- members] -- devices
 --   ,services = [] -- one grouped light for the exact same thing.
 --   ,metadata = ArchetypeMeta {name = friendly_name
 --                             ,archetype = case () of
