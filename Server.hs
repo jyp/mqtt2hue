@@ -42,6 +42,7 @@ import Servant
 import Servant.EventStream
 import Logic
 import Logic.HueV2 as V2
+import Logic.HueV1 as V1
 import Types
 import HueAPI
 import qualified HueAPIV2 as V2
@@ -86,6 +87,7 @@ hueServerV2 = eventStreamGet
   :<|> bridgeGet
   :<|> geolocationGet
   :<|> geoFenceGet
+  :<|> lightPut
 
 okResponse1 :: a -> V2.Response a
 okResponse1 x = okResponse [x]
@@ -93,7 +95,15 @@ okResponse1 x = okResponse [x]
 okResponse :: [a] -> V2.Response a
 okResponse x = V2.Response x []
 
-resourcesGet  :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.ResourceGet)
+lightPut :: Maybe Text -> V2.Identifier -> V2.LightPut -> ReaderT ServerState Handler Text
+lightPut userId lid a0 = do
+  verifyUser2 userId
+  liftIO $ debug (Input Hue) ("Light state " <> Text.pack (show lid) {-<> " " <> Text.pack (show a0)-})
+  as <- askingState (V2.translateLightAction lid a0)
+  runAgenda [as]
+  return "Updated."
+
+resourcesGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.ResourceGet)
 resourcesGet userId = do
   verifyUser2 userId
   r <- askingState mkResources
@@ -106,7 +116,6 @@ geolocationGet = v2call $ do
 geoFenceGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GeoFenceGet)
 geoFenceGet = v2call $ do
   return $ okResponse1 $ mkGeoFence
-  
 
 bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet)
 bridgeGet userId = do
@@ -375,7 +384,7 @@ putLight :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 putLight userId lightId action = do
   verifyUser userId
   liftIO $ debug (Input Hue) (Text.pack (show lightId) <> " " <> Text.pack (show action))
-  a <- askingState (translateLightAction lightId action)
+  a <- askingState (V1.translateLightAction lightId action)
   runAgenda [a]
 
 

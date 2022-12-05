@@ -98,7 +98,7 @@ mkLight :: Int -> ZigDevice -> LightConfig -> LightState -> (DeviceGet, LightGet
 mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
         l@LightConfig{unique_id,device,supported_color_modes,max_mireds,min_mireds} ls =
   (mkLightDevice zdev device, svc) where
-  serviceId = identStore (hashableToId unique_id) v1Id
+  serviceId = identStoreAddr (hashableToId unique_id) ieee_address
   deviceRef@ResourceRef{rid = deviceId} = mkDeviceRef ieee_address
   mkLightDevice :: ZigDevice -> Device -> DeviceGet
   mkLightDevice  ZigDevice{model_id} MQTT.Device{name=prodname,..} = DeviceGet
@@ -239,3 +239,33 @@ mkGeoLoc = GeoLocationGet
   ,is_configured = False
   ,_type = Geolocation
   }
+
+actionHue2Mqtt  :: LightPut -> MQTT.Action
+actionHue2Mqtt LightPut{..} = MQTT.Action {
+  brightness = fmap (\Dimming {brightness} -> round (brightness*254/100)) dimming
+  ,color = (<$> color) $ \case
+      ColorGet {xy = XY x y} -> ColorXY x y Nothing Nothing
+  ,state = (<$> on) $ \case
+      IsOn True -> ON
+      IsOn False -> OFF
+  ,color_temp = fmap (\ColorTemp{mirek} -> mirek) color_temperature
+  ,scene_recall = Nothing
+  }
+
+identStoreAddr :: Identifier -> IEEEAddress -> Identifier
+identStoreAddr (Identifier (Word128 i _)) (IEEEAddress j)  = Identifier (Word128 i j)
+
+identLoadAddr :: Identifier -> IEEEAddress
+identLoadAddr (Identifier (Word128 _ i)) = IEEEAddress i
+
+
+translateLightAction :: Identifier -> LightPut -> AppState -> AgendaItem
+translateLightAction i a0 AppState{lights} = mkLightAction l a
+ where a = actionHue2Mqtt a0
+       l = case Map.lookup addr lights of
+         Nothing -> error ("translate light: unknown addr" <> show addr)
+         Just x -> x         
+       addr = identLoadAddr i
+       -- update the state so that immediate queries will get the
+       -- optimistically updated state. The real state update will
+       -- occur later when MQTT sends back the true updated light state.

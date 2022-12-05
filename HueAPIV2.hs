@@ -24,7 +24,8 @@ import Data.Aeson
 import GHC.Generics
 import Servant
 import Data.Time.Clock
-import Data.Text (Text,pack)
+import Data.Text (Text,pack,unpack,toUpper)
+import qualified Data.Text as Text
 import Types
 import HueAPI as ReExport (ColorGamutType(..)) 
 import Data.List (intercalate)
@@ -39,9 +40,11 @@ type HueApiV2
   :<|> ClipV2 ("resource" :> "bridge" :> Get '[JSON] (Response BridgeGet))
   :<|> ClipV2 ("resource" :> "geolocation" :> Get '[JSON] (Response GeoLocationGet))
   :<|> ClipV2 ("resource" :> "geofence_client" :> Get '[JSON] (Response GeoFenceGet))
+  :<|> ClipV2 ("resource" :> "light" :> Capture "lightid" Identifier :> ReqBody '[JSON] LightPut :> Put '[JSON] Text)
  
 
 newtype Identifier = Identifier Word128 deriving (Eq, Ord)
+
 instance Bits Identifier where
   Identifier (Word128 a b) `xor` Identifier (Word128 a' b') =
     Identifier (Word128 (a `xor` a') (b `xor` b'))
@@ -66,8 +69,18 @@ fromInt x = Identifier (Word128 0 (fromIntegral x))
 identStore :: Identifier -> Int -> Identifier
 identStore i x = (i .&. complement (fromInt 0xFFFF)) .|. fromInt x
 
-identGet :: Identifier -> Int
-identGet (Identifier (Word128 _ i)) = fromIntegral (i .&. 0xFFFF)
+identLoad :: Identifier -> Int
+identLoad (Identifier (Word128 _ i)) = fromIntegral (i .&. 0xFFFFFFFF)
+
+instance FromHttpApiData Identifier where
+  parseUrlPiece x =
+    if all (`elem` ['0'..'9'] ++ ['A'..'F']) y
+    then Right (Identifier (Word128 (readHex h) (readHex l)))
+    else Left "Invalid hue resource identifier"
+    where (h,l) = splitAt 16 y
+          y = filter (/= '-') (unpack (toUpper x))
+          readHex z = read ("0x" ++ z)
+  parseQueryParam _ = Left "Hue identifier cannot be passed as a query parameter"
 
 instance Show Identifier where
   show (Identifier w) = intercalate "-" [a,b,c,d,e]
@@ -260,23 +273,29 @@ data Dimming = Dimming {
         min_dim_level :: Maybe Float
       }
   deriving (Generic)            
+instance FromJSON Dimming where parseJSON = myGenericParseJSON
 data MirekSchema = MirekSchema {
           mirek_minimum :: Int,
           mirek_maximum :: Int
         }   deriving (Generic)
+instance FromJSON MirekSchema where parseJSON = myGenericParseJSON
 data ColorTemp = ColorTemp {
         mirek :: Int,
         mirek_valid :: Bool, -- true if light is in full color mode
         mirek_schema :: MirekSchema
       } deriving (Generic)
+instance FromJSON ColorTemp where parseJSON = myGenericParseJSON
 data XY = XY {x, y :: Float} deriving (Generic, Show)
+instance FromJSON XY where parseJSON = myGenericParseJSON
 data Gamut = Gamut {red , green , blue :: XY} deriving (Generic,Show)
+instance FromJSON Gamut where parseJSON = myGenericParseJSON
 data ColorGet = ColorGet {
         xy :: XY,
         gamut :: Maybe Gamut,
         gamut_type:: Maybe ColorGamutType
       } deriving (Generic)
-     
+instance FromJSON ColorGet where parseJSON = myGenericParseJSON
+
 data Dynamics = Dynamics {
         status :: Text, -- "none",
         status_values :: [Text],
@@ -307,7 +326,15 @@ data LightGet = LightGet {
       mode:: Text, -- "normal"
       effects :: Maybe Effects,
       _type :: ResourceType
-    }
+    } deriving Generic
+data LightPut = LightPut
+  {
+      on :: Maybe IsOn,
+      dimming :: Maybe Dimming,
+      color_temperature :: Maybe ColorTemp,
+      color :: Maybe ColorGet
+  } deriving Generic
+instance FromJSON LightPut where parseJSON = myGenericParseJSON
 data SceneMeta = SceneMeta {
   name :: Text
   -- image: ResourceRef

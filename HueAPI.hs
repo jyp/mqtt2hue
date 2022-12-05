@@ -199,6 +199,7 @@ data Control = NoControl | Ct {ct :: Ct} | FullColor {colorgamuttype :: ColorGam
   deriving (Eq, Show, Generic)
 data ColorGamutType = C | Other
   deriving (Eq, Show, Generic)
+instance FromJSON ColorGamutType where parseJSON = myGenericParseJSON
 data Ct = CtValues {min :: Int,  max :: Int}
   deriving (Eq, Show, Generic)
 data GroupCreate = GroupCreate

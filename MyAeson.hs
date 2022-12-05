@@ -1,12 +1,15 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 module MyAeson where
 
 import Data.Aeson.TH
 import Data.Aeson
+import Data.Aeson.Types
 import Language.Haskell.TH.Syntax
 import Data.Char
 import Control.Applicative
 import qualified Data.ByteString.Lazy
+import GHC.Generics
 
 options :: Options
 options =
@@ -25,6 +28,11 @@ myDeriveFromJSON = deriveFromJSON options
 myDeriveJSON :: Name -> Q [Dec]
 myDeriveJSON = deriveJSON options
 
+myGenericToJSON :: (Generic a, GToJSON' Value Zero (Rep a)) => a -> Value
+myGenericToJSON = genericToJSON options
+
+myGenericParseJSON :: (Generic a, GFromJSON Zero (Rep a)) => Value -> Parser a
+myGenericParseJSON = genericParseJSON options
 
 data Choice a b = Opt1 a | Opt2 b deriving Show
 
