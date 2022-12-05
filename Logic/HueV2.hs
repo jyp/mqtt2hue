@@ -214,7 +214,8 @@ mkRoom AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
   nm = toCaseFold friendly_name
 
 mkResources :: AppState -> [ResourceGet]
-mkResources st@AppState{..} = brs ++ lrs ++ rrs where
+mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc]
+  where
   brs = [RDevice d, RBridge b] where (d,b) = mkBridge st
   lrs = concat [[RDevice dr, RLight lr]
                | (a,lc) <- Map.assocs lights
@@ -225,3 +226,16 @@ mkResources st@AppState{..} = brs ++ lrs ++ rrs where
   rrs = concat [[RGroup gr, RLight lr]
                | g <- Map.elems groups
                , let (gr,lr) = mkRoom st g ]
+
+mkGeoFence :: GeoFenceGet
+mkGeoFence = GeoFenceGet {_id = hashableToId ("geofence-client" :: Text)
+                         ,name = "aiohue_myqiddfsyx"
+                         ,_type = GeofenceClient
+                         }
+
+mkGeoLoc :: GeoLocationGet
+mkGeoLoc = GeoLocationGet
+  {_id = hashableToId ("geolocation" :: Text)
+  ,is_configured = False
+  ,_type = Geolocation
+  }

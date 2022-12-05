@@ -31,6 +31,16 @@ import Data.List (intercalate)
 import Servant.EventStream
 import Data.Bits
 
+type AppKey = Header "hue-application-key" Text 
+type ClipV2 k = "clip" :> "v2" :> AppKey :> k
+type HueApiV2
+  =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming EventStream (SourceIO SSE)
+  :<|> ClipV2 ("resource" :>             Get '[JSON] (Response ResourceGet))
+  :<|> ClipV2 ("resource" :> "bridge" :> Get '[JSON] (Response BridgeGet))
+  :<|> ClipV2 ("resource" :> "geolocation" :> Get '[JSON] (Response GeoLocationGet))
+  :<|> ClipV2 ("resource" :> "geofence_client" :> Get '[JSON] (Response GeoFenceGet))
+ 
+
 newtype Identifier = Identifier Word128 deriving (Eq, Ord)
 instance Bits Identifier where
   Identifier (Word128 a b) `xor` Identifier (Word128 a' b') =
@@ -71,13 +81,6 @@ instance ToJSON Identifier where
   toJSON i = String (pack (show i))
 
 
-type AppKey = Header "hue-application-key" Text 
-type ClipV2 k = "clip" :> "v2" :> AppKey :> k
-type HueApiV2
-  =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming EventStream (SourceIO SSE)
-  :<|> ClipV2 ("resource" :> "bridge" :> Get '[JSON] (Response BridgeGet))
-  :<|> ClipV2 ("resource" :>             Get '[JSON] (Response ResourceGet))
- 
 
 data Brightness = Brightness { brightness :: Int } deriving (Eq,Show,Generic)
 data ColorSet = ColorSet { xy :: XY } deriving (Show,Generic)
@@ -348,11 +351,25 @@ data ConfigPut = ConfigPut
   } deriving Generic
 instance FromJSON ConfigPut
 
+data GeoLocationGet = GeoLocationGet {
+  _id :: Identifier,
+  is_configured :: Bool,
+  _type :: ResourceType
+  }
+
+data GeoFenceGet = GeoFenceGet {
+  _id :: Identifier,
+  name :: Text,
+  _type :: ResourceType
+  }
+
 data ResourceGet
   = RBridge BridgeGet
   | RLight LightGet
   | RGroup GroupGet
   | RDevice DeviceGet
+  | RGeoLoc GeoLocationGet
+  | RGeoFence GeoFenceGet
   deriving (Generic)
 data Error = Error { description :: Text }  deriving (Generic)
 data Response a = Response
@@ -388,6 +405,8 @@ $(myDeriveToJSON ''SceneGet)
 $(myDeriveToJSON ''LightGet)
 $(myDeriveToJSON ''DeviceGet)
 $(myDeriveToJSON ''GroupGet)
+$(myDeriveToJSON ''GeoLocationGet)
+$(myDeriveToJSON ''GeoFenceGet)
 $(myDeriveToJSON ''Response)
 instance ToJSON ResourceGet where toJSON = genericToJSON defaultOptions {sumEncoding = UntaggedValue}
 

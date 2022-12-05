@@ -6749,6 +6749,12 @@
   ]
 }
 #+end_src
+** GET /clip/v2/resource/geofence_client
+** GET /clip/v2/resource/bridge
+
+** GET /clip/v2/resource/geolocation
+  Accept: 
+  Status: 404 Not Found 0.000010076s
 
 
 * Events

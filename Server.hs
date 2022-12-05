@@ -82,8 +82,10 @@ hueServerV1 = getDescription
 
 hueServerV2 :: ServerT V2.HueApiV2 HueHandler
 hueServerV2 = eventStreamGet
-  :<|> bridgeGet
   :<|> resourcesGet
+  :<|> bridgeGet
+  :<|> geolocationGet
+  :<|> geoFenceGet
 
 okResponse1 :: a -> V2.Response a
 okResponse1 x = okResponse [x]
@@ -96,6 +98,15 @@ resourcesGet userId = do
   verifyUser2 userId
   r <- askingState mkResources
   return $ okResponse $ r
+
+geolocationGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GeoLocationGet)
+geolocationGet = v2call $ do
+  return $ okResponse1 $ mkGeoLoc
+
+geoFenceGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GeoFenceGet)
+geoFenceGet = v2call $ do
+  return $ okResponse1 $ mkGeoFence
+  
 
 bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet)
 bridgeGet userId = do
@@ -188,6 +199,11 @@ createUser CreateUser {devicetype=applicationIdentifier} = do
       Data.Yaml.encodeFile dbFname db
       return db
   return [CreatedUser $ UserName applicationKey]
+
+v2call :: ReaderT ServerState Handler b -> Maybe Text -> ReaderT ServerState Handler b
+v2call k = \userId -> do
+  verifyUser2 userId
+  k
 
 verifyUser2 :: Maybe Text -> HueHandler ()
 verifyUser2 = \case
@@ -289,6 +305,7 @@ withAppState f = do
     Just a -> return a
     -- putStrLn $ "!!! " <> show st'
 
+getCapabilities :: Text -> ReaderT ServerState Handler Value
 getCapabilities userId = do
   verifyUser userId
   return $ Logic.getCapabilities
