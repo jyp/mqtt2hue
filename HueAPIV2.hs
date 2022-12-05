@@ -348,6 +348,12 @@ data ConfigPut = ConfigPut
   } deriving Generic
 instance FromJSON ConfigPut
 
+data ResourceGet
+  = RBridge BridgeGet
+  | RLight LightGet
+  | RGroup GroupGet
+  | RDevice DeviceGet
+  deriving (Generic)
 data Error = Error { description :: Text }  deriving (Generic)
 data Response a = Response
   { _data :: [a]
@@ -381,7 +387,9 @@ $(myDeriveToJSON ''BridgeGet)
 $(myDeriveToJSON ''SceneGet)
 $(myDeriveToJSON ''LightGet)
 $(myDeriveToJSON ''DeviceGet)
+$(myDeriveToJSON ''GroupGet)
 $(myDeriveToJSON ''Response)
+instance ToJSON ResourceGet where toJSON = genericToJSON defaultOptions {sumEncoding = UntaggedValue}
 
 
 
