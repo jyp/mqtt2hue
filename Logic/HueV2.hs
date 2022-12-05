@@ -196,7 +196,7 @@ mkRoom AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
    {_id = roomId
    ,id_v1 = "/groups/" <> pack (show gid)
    ,children = [mkDeviceRef a | a <- memberAddresses] -- devices
-   ,services = [] -- one grouped light for the exact same thing.
+   ,services = [ResourceRef groupedLightId GroupedLight]
    ,metadata = ArchetypeMeta {name = friendly_name
                              ,archetype = case () of
                                  _ | "office" `isInfixOf` nm -> Office
