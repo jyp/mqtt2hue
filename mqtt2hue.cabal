@@ -51,6 +51,7 @@ executable mqtt2hue
   build-depends: unordered-containers
   build-depends: http-api-data
   build-depends: large-hashable
+  build-depends: vector
   
   main-is: Main.hs
   ghc-options: -threaded -rtsopts

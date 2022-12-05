@@ -43,12 +43,14 @@ type HueApi =
            :<|>  Capture "userid" Text :>             Get '[JSON] Everything
            :<|>  Capture "userid" Text :> "config" :> Get '[JSON] Config
            :<|>  Capture "userid" Text :> "config" :> ReqBody '[JSON] Value :> Put '[JSON] Text
+           :<|>  Capture "userid" Text :> "capabilities" :> Get '[JSON] Value
            :<|>  Capture "userid" Text :> "lights" :> Get '[JSON] (Map Int Light)
            :<|>  Capture "userid" Text :> "lights" :> Capture "lightid" Int :> "state" :> ReqBody '[JSON] Action :> Put '[JSON] Text
            :<|>  Capture "userid" Text :> "groups" :> Get '[JSON] (Map Int Group)
            :<|>  Capture "userid" Text :> "groups" :> Capture "groupid" Int :> Get '[JSON] Group
            :<|>  Capture "userid" Text :> "groups" :> Capture "groupid" Int :> "action" :> ReqBody '[JSON] Action :> Put '[JSON] Text
-           :<|>  Capture "userid" Text :> "scenes" :> Get '[JSON] (Map Int Scene))
+           :<|>  Capture "userid" Text :> "scenes" :> Get '[JSON] (Map Int Scene)
+           :<|>  Capture "userid" Text :> "sensors" :> Get '[JSON] (Map Int Null))
 
 data CreatedUser = CreatedUser {success :: UserName}
   deriving (Eq, Show, Generic)

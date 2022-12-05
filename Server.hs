@@ -69,12 +69,16 @@ hueServerV1 = getDescription
          :<|> getConfig
          :<|> bridgeConfig
          :<|> putConfig
+         :<|> getCapabilities
          :<|> getLights
          :<|> putLight
          :<|> getGroups
          :<|> getGroup
          :<|> putGroup
          :<|> getScenes
+         :<|> getSensors
+
+
 
 hueServerV2 :: ServerT V2.HueApiV2 HueHandler
 hueServerV2 = eventStreamGet
@@ -198,6 +202,7 @@ verifyUser userId = do
     throwError err300
 
 
+
 getBridgeConfig :: HueHandler Config
 getBridgeConfig = do
  netCfg@NetConfig {..} <- askConfig
@@ -283,7 +288,16 @@ withAppState f = do
     Nothing -> throwError err400
     Just a -> return a
     -- putStrLn $ "!!! " <> show st'
-    
+
+getCapabilities userId = do
+  verifyUser userId
+  return $ capabilities
+
+getSensors :: Monoid a => Text -> ReaderT ServerState Handler a
+getSensors userId = do
+  verifyUser userId
+  return mempty
+  
 
 getLights :: Text -> HueHandler (Map Int Light)
 getLights userId = do
@@ -369,7 +383,6 @@ hueApi = Proxy
 
 instance ToXml [Node] where
   toXml = id
-
 
 hueApp :: ServerState -> Application
 hueApp st = serve hueApi (hoistServer hueApi funToHandler hueServer)
