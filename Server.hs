@@ -69,7 +69,7 @@ hueServerV1 = getDescription
          :<|> getConfig
          :<|> bridgeConfig
          :<|> putConfig
-         :<|> getCapabilities
+         :<|> Server.getCapabilities
          :<|> getLights
          :<|> putLight
          :<|> getGroups
@@ -291,7 +291,7 @@ withAppState f = do
 
 getCapabilities userId = do
   verifyUser userId
-  return $ capabilities
+  return $ Logic.getCapabilities
 
 getSensors :: Monoid a => Text -> ReaderT ServerState Handler a
 getSensors userId = do

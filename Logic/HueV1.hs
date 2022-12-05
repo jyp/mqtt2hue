@@ -13,7 +13,7 @@
 
 module Logic.HueV1 (
   allHueLights, allHueGroups, getHueGroup, allHueScenes,
-  translateGroupAction, translateLightAction) where
+  translateGroupAction, translateLightAction, getCapabilities) where
 
 import Data.Maybe
 import MQTTAPI as MQTT
@@ -25,6 +25,9 @@ import Data.Time.Clock
 import Text.Read (readMaybe)
 import MyAeson(Choice(..))
 import Logic.Common
+import Data.Aeson as Aeson
+import Data.Aeson.KeyMap (fromList)
+import qualified Data.Vector as V
 
 swap :: (b, a) -> (a, b)
 swap (x,y) = (y,x)
@@ -198,3 +201,25 @@ allHueScenes st@AppState{groups}
           ,version = 2})
   | (gid,g@GroupConfig{scenes})<- Map.assocs groups
   , SceneRef{_id=sid,name} <- scenes ]
+
+
+
+getCapabilities :: Aeson.Value
+getCapabilities = Object $ fromList [
+            ("lights", avail 50),
+            ("sensors", avail' 60 [
+                ("clip", avail 60),
+                ("zll", avail 60),
+                ("zgp", avail 60)]),
+            ("groups", avail 60),
+            ("scenes", avail' 100 [("lightstates", avail 1500)]),
+            ("rules", avail' 100 [("lightstates", avail 1500)]),
+            ("schedules", avail 100),
+            ("resourcelinks", avail 100),
+            ("whitelists", avail 100),
+            ("timezones",
+             Object (fromList [("value",Array (V.fromList [String "Europe/Stockholm"]))])),
+            ("streaming", avail' 1  [("total",Number 10), ("channels", Number 10)])]
+             
+  where avail x = avail' x []
+        avail' x xs = Object $ fromList (("available",Number x):xs)
