@@ -54,8 +54,8 @@ mkDeviceRef addr = ResourceRef (hashableToId addr) DeviceResource
 
 mkLight :: Int -> ZigDevice -> LightConfig -> LightState -> (DeviceGet, LightGet)
 mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
-        l@LightConfig{unique_id,device} ls =
-  (mkLightDevice zdev device, mkLightService l ls) where
+        l@LightConfig{unique_id,device,supported_color_modes,max_mireds,min_mireds} ls =
+  (mkLightDevice zdev device, svc) where
   serviceId = identStore (hashableToId unique_id) v1Id
   deviceRef@ResourceRef{rid = deviceId} = mkDeviceRef ieee_address
   mkLightDevice :: ZigDevice -> Device -> DeviceGet
@@ -78,13 +78,23 @@ mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
     , services = [ResourceRef serviceId LightResource]
     , _type = DeviceResource
     }
+  path = "/light/" <> pack (show v1Id)
+  svc = mkLightService friendly_name serviceId path deviceRef
+                       (supported_color_modes,min_mireds,max_mireds) ls
 
-  mkLightService
-    LightConfig{supported_color_modes,min_mireds,max_mireds}
+mkLightService :: Text
+               -> Identifier
+               -> Path
+               -> ResourceRef
+               -> ([ColorMode], Maybe Int, Maybe Int)
+               -> LightState
+               -> LightGet
+mkLightService friendly_name serviceId path owner
+    (supported_color_modes,min_mireds,max_mireds)
     LightState{brightness=bri,state,color,color_temp,color_mode=mode} = LightGet
     {_id = serviceId
-    ,id_v1 = "/light/" <> pack (show v1Id) --  Path,
-    ,owner = deviceRef
+    ,id_v1 = path --  Path,
+    ,owner = owner
     ,metadata = ArchetypeMeta
                 { name = friendly_name
                 , archetype = SultanBulb -- FIXME
@@ -151,27 +161,35 @@ mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
 --     }
 
 
--- mkRoom :: AppState -> GroupConfig -> (GroupGet, LightGet)
--- mkRoom  st@AppState{..} g@GroupConfig{..} = GroupGet
---   {_id = identStore (hashableToId friendly_name) _id
---   ,id_v1 = "/groups/" <> pack (show _id)
---   ,children = [mkDeviceRef _ | _ <- members] -- devices
---   ,services = [] -- one grouped light for the exact same thing.
---   ,metadata = ArchetypeMeta {name = friendly_name
---                             ,archetype = case () of
---                                 _ | "office" `isInfixOf` nm -> Office
---                                 _ | "bedroom" `isInfixOf` nm -> Bedroom
---                                 _ | "garage" `isInfixOf` nm -> Garage
---                                 _ | "hallway" `isInfixOf` nm -> Hallway
---                                 _ | "wardrobe" `isInfixOf` nm -> Hallway
---                                 _ | "kitchen" `isInfixOf` nm -> Kitchen
---                                 _ | "attic" `isInfixOf` nm -> Attic
---                                 _ | "living" `isInfixOf` nm -> LivingRoom
---                                 _ -> Bedroom
---                             }
---   ,_type = Room
---   } where
---         nm = toCaseFold friendly_name
+mkRoom :: AppState -> GroupConfig -> (GroupGet, LightGet)
+mkRoom  st@AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
+  groupedLightId = identStore (hashableToId friendly_name) gid
+  roomId = identStore (hashableToId friendly_name) gid
+  roomRef = ResourceRef roomId Room
+  light = mkLightService friendly_name groupedLightId ("/group/" <> pack (show gid)) roomRef _ _
+  memberAddresses = [a | GroupMember{ieee_address=a} <- members]
+  lightCfgs = catMaybes [Map.lookup a lights | a <- memberAddresses]
+  lightStates = catMaybes catMaybes [Map.lookup a lights | a <- lightCfgs]
+  room = GroupGet
+   {_id = roomId
+   ,id_v1 = "/groups/" <> pack (show gid)
+   ,children = [mkDeviceRef a | a <- memberAddresses] -- devices
+   ,services = [] -- one grouped light for the exact same thing.
+   ,metadata = ArchetypeMeta {name = friendly_name
+                             ,archetype = case () of
+                                 _ | "office" `isInfixOf` nm -> Office
+                                 _ | "bedroom" `isInfixOf` nm -> Bedroom
+                                 _ | "garage" `isInfixOf` nm -> Garage
+                                 _ | "hallway" `isInfixOf` nm -> Hallway
+                                 _ | "wardrobe" `isInfixOf` nm -> Hallway
+                                 _ | "kitchen" `isInfixOf` nm -> Kitchen
+                                 _ | "attic" `isInfixOf` nm -> Attic
+                                 _ | "living" `isInfixOf` nm -> LivingRoom
+                                 _ -> Bedroom
+                             }
+   ,_type = Room
+   }
+  nm = toCaseFold friendly_name
 {-
 
 getHueGroups :: AppState -> [GroupGet]
