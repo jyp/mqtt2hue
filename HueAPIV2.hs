@@ -71,13 +71,12 @@ instance ToJSON Identifier where
   toJSON i = String (pack (show i))
 
 
-
 type AppKey = Header "hue-application-key" Text 
-type ClipV2 = "clip" :> "v2" :> AppKey
+type ClipV2 k = "clip" :> "v2" :> AppKey :> k
 type HueApiV2
   =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming EventStream (SourceIO SSE)
-  :<|> "clip" :> "v2" :> AppKey :> "resource" :> "bridge" :> Get '[JSON] (Response BridgeGet)
-  -- :<|> ClipV2 :> "resource" :> Get '[JSON] ResourceGet
+  :<|> ClipV2 ("resource" :> "bridge" :> Get '[JSON] (Response BridgeGet))
+  :<|> ClipV2 ("resource" :>             Get '[JSON] (Response ResourceGet))
  
 
 data Brightness = Brightness { brightness :: Int } deriving (Eq,Show,Generic)
@@ -165,6 +164,7 @@ instance ToJSON ResourceType where
 data TimeZone = TimeZone
   { time_zone :: Text
   } deriving (Show, Generic)
+
 data ResourceRef = ResourceRef
   {rid :: Identifier
   ,rtype :: ResourceType
@@ -239,7 +239,7 @@ data ProductData = ProductData {
         product_archetype :: Archetype,
         certified :: Bool,
         software_version :: Text,
-        hardware_platform_type :: Text
+        hardware_platform_type :: Maybe Text
       } deriving (Generic)
 
 data DeviceGet = DeviceGet {

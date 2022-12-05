@@ -35,7 +35,7 @@ data NetConfig = NetConfig { mac :: MAC,
                              ipaddress,
                              netmask,
                              timezone,
-                             gateway :: Text } deriving Generic
+                             gateway :: Text } deriving (Generic, Show)
 
 macContents (MAC a b c d e f) = [a,b,c,d,e,f]
 

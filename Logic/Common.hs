@@ -17,11 +17,11 @@ module Logic.Common
     getDeviceByFriendlyName, topicFriendlyName,
     -- Lights
     getLightState, lightAddress, combineLightStates,
-    mkLightAction,
+    mkLightAction, blankLightState, lightNotifyTopic,
     -- Groups
     applyGroupAction, mkGroupAction, groupScenes, groupLights,
     blankAppState,  updateLightConfig, updateLightState,
-    getGroupState,
+    getGroupState, groupNotifyTopic
   ) where
 import Data.Maybe
 import MQTTAPI
@@ -32,9 +32,10 @@ import Text.Read (readMaybe)
 import Data.Aeson (ToJSON(..))
 import qualified Data.List as List
 import qualified Data.Text as Text
+import Types (NetConfig(..))
 
-blankAppState :: AppState 
-blankAppState = AppState mempty mempty mempty mempty mempty mempty mempty
+blankAppState :: NetConfig -> AppState 
+blankAppState cfg = AppState cfg mempty mempty mempty mempty mempty mempty mempty 
 
 data AgendaItem = forall a. ToJSON a => AgendaItem
   { outTopic :: Text
@@ -43,7 +44,8 @@ data AgendaItem = forall a. ToJSON a => AgendaItem
 
 
 data AppState = AppState
-  {lights :: Map IEEEAddress MQTTAPI.LightConfig
+  {configuration :: NetConfig
+  ,lights :: Map IEEEAddress MQTTAPI.LightConfig
   ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state. Lights and groups here.
   ,switchStates :: Map Text MQTTAPI.SwitchState -- map from topic to state. Switches here.
   ,lightIds :: Map IEEEAddress Int -- give hue v1 id here

@@ -18,35 +18,77 @@ import MQTTAPI as MQTT
 import HueAPIV2
 import qualified Data.Map as Map
 import Data.Map (Map,toList)
-import Data.Text (Text,unpack,pack,isInfixOf,toCaseFold)
-import Data.Time.Clock
-import Text.Read (readMaybe)
-import MyAeson(Choice(..))
+import Data.Text (Text,pack,isInfixOf,toCaseFold)
 import Logic.Common
 import Types
-import Data.Hashable
-import Data.LargeHashable (Word128(..))
-import Data.LargeHashable.Class
 import Config
-import Data.Bits
-
-
--- zigDevToId :: MQTT.ZigDevice -> Identifier
--- zigDevToId ZigDevice{network_address,ieee_address=IEEEAddress w}
---   = Identifier (Word128 w (fromIntegral network_address))
+import Data.List (nub)
 
 hashableToId :: LargeHashable a => a -> Identifier
 hashableToId = Identifier . hash128
 
-bridge :: NetConfig -> BridgeGet
-bridge cfg = BridgeGet
-    {_id = hashableToId (macContents (mac cfg))
+mkBridge :: AppState -> (DeviceGet,BridgeGet)
+mkBridge AppState{configuration=cfg} = (device,bridge) where
+  devId = hashableToId ("Zigbee Controller"::Text)
+  deviceRef = ResourceRef{rid=devId, rtype=DeviceResource} 
+  bridgeId = hashableToId (macContents (mac cfg))
+  device = DeviceGet
+    {_id = devId
     ,id_v1 = ""
-    ,owner = Nothing
-    ,bridge_id = mkBridgeIdLower cfg
-    ,time_zone = TimeZone "Europe/Stockholm" -- FIXME: config
-    ,_type = Bridge
-    }  
+    ,product_data = ProductData
+      {model_id = "BSB002"
+      ,manufacturer_name = "Signify Netherlands B.V."
+      ,product_name = "Philips hue"
+      ,product_archetype = BridgeV2
+      ,certified = False
+      ,software_version = "1.53.1953188020"
+      ,hardware_platform_type = Nothing}
+    ,metadata = ArchetypeMeta {name = "MQTT2Hue"
+                              ,archetype = BridgeV2}
+    ,services = [ ResourceRef bridgeId Bridge ]
+    ,_type = DeviceResource
+    }
+  bridge = BridgeGet
+      {_id = bridgeId
+      ,id_v1 = ""
+      ,owner = Just deviceRef
+      ,bridge_id = mkBridgeIdLower cfg
+      ,time_zone = TimeZone "Europe/Stockholm" -- FIXME: config
+      ,_type = Bridge
+      }  
+
+{-{
+      "id": "69dc4fd9-01e7-4329-ae0b-476ad339753c",
+      "id_v1": "",
+      "product_data": {
+        "model_id": "BSB002",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Philips hue",
+        "product_archetype": "bridge_v2",
+        "certified": true,
+        "software_version": "1.53.1953188020"
+      },
+      "metadata": {
+        "name": "Philips hue",
+        "archetype": "bridge_v2"
+      },
+      "identify": {},
+      "services": [
+        {
+          "rid": "1546cfb2-70a3-4b6c-a233-9ac38c7d4980",
+          "rtype": "bridge"
+        },
+        {
+          "rid": "047aeeaf-8b88-4c78-893f-73babfa3f1af",
+          "rtype": "zigbee_connectivity"
+        },
+        {
+          "rid": "e996e8b7-854f-4fee-a879-37f161e0bbd0",
+          "rtype": "entertainment"
+        }
+      ],
+      "type": "device"
+    }-}
 
 mkDeviceRef :: IEEEAddress -> ResourceRef
 mkDeviceRef addr = ResourceRef (hashableToId addr) DeviceResource
@@ -65,7 +107,7 @@ mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
     , product_data = ProductData
       { certified = False
       , software_version = sw_version
-      , hardware_platform_type = "1166-116" -- Innr, FIXME
+      , hardware_platform_type = Nothing -- "1166-116" -- Innr, FIXME
       , model_id = fromMaybe "ABC123" model_id
       , manufacturer_name = manufacturer
       , product_name = prodname
@@ -134,42 +176,22 @@ mkLightService friendly_name serviceId path owner
     ,_type = LightResource
     }
 
--- {
---       "id": "c2b42ff1-9e26-4ca1-9891-648dec038994",
---       "id_v1": "/groups/9",
---       "owner": {
---         "rid": "d8639195-dbe2-41a2-8a53-1d7b3930ae58",
---         "rtype": "room"
---       },
---       "on": {
---         "on": false
---       },
---       "dimming": {
---         "brightness": 0.0
---       },
---       "dimming_delta": {},
---       "color_temperature": {},
---       "color_temperature_delta": {},
---       "alert": {
---         "action_values": [
---           "breathe"
---         ]
---       },
---       "signaling": {},
---       "dynamics": {},
---       "type": "grouped_light"
---     }
-
-
 mkRoom :: AppState -> GroupConfig -> (GroupGet, LightGet)
-mkRoom  st@AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
+mkRoom AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
   groupedLightId = identStore (hashableToId friendly_name) gid
   roomId = identStore (hashableToId friendly_name) gid
   roomRef = ResourceRef roomId Room
-  light = mkLightService friendly_name groupedLightId ("/group/" <> pack (show gid)) roomRef _ _
+  light = mkLightService friendly_name groupedLightId ("/group/" <> pack (show gid)) roomRef (cmode,mmin,mmax) groupLightState
   memberAddresses = [a | GroupMember{ieee_address=a} <- members]
   lightCfgs = catMaybes [Map.lookup a lights | a <- memberAddresses]
-  lightStates = catMaybes catMaybes [Map.lookup a lights | a <- lightCfgs]
+  cmode = nub $ concat (supported_color_modes <$> lightCfgs)
+  mmin = case catMaybes (min_mireds <$> lightCfgs) of
+    [] -> Nothing
+    xs -> Just (maximum xs)
+  mmax = case catMaybes (max_mireds <$> lightCfgs) of
+    [] -> Nothing
+    xs -> Just (minimum xs)
+  groupLightState = fromMaybe blankLightState (Map.lookup (groupNotifyTopic g) lightStates )
   room = GroupGet
    {_id = roomId
    ,id_v1 = "/groups/" <> pack (show gid)
@@ -190,61 +212,16 @@ mkRoom  st@AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
    ,_type = Room
    }
   nm = toCaseFold friendly_name
-{-
 
-getHueGroups :: AppState -> [GroupGet]
-getHueGroups st@AppState{groups} = [mkRoom i g | (i,g) <- Map.assocs groups ]
-
--- mkGroupWithLights :: AppState -> GroupType -> Text -> Map IEEEAddress MQTT.LightConfig -> Group
--- mkGroupWithLights st@AppState{..} _type name ls
---   = Group {lights = [pack (show i)
---                     | (uid,_) <- Map.toList ls
---                     , let Just i = Map.lookup uid lightIds]
---           ,sensors = mempty
---           ,state = GroupState {all_on = and ons
---                               ,any_on = or ons}
---           ,recycle = False
---           ,_class = case () of
---               _ | "office" `isInfixOf` nm -> Just Office
---               _ | "bedroom" `isInfixOf` nm -> Just Bedroom
---               _ | "garage" `isInfixOf` nm -> Just Garage
---               _ | "hallway" `isInfixOf` nm -> Just Hallway
---               _ | "wardrobe" `isInfixOf` nm -> Just Hallway
---               _ | "kitchen" `isInfixOf` nm -> Just Kitchen
---               _ | "attic" `isInfixOf` nm -> Just Attic
---               _ | "living" `isInfixOf` nm -> Just LivingRoom
---               _ -> Just Bedroom
---           ,action = lightStateMqtt2Hue (combineLightStates groupLightStates)
---           ,..}
---   where ons = [state == ON | MQTT.LightState{state} <- groupLightStates  ]
---         groupLightStates = getLightState st . snd <$> Map.toList ls
---         nm = toCaseFold name
-
-
--- groups :: AppState -> 
--- {
---       "id": "581d7d2d-8cdc-4462-99d4-79182f44b63a",
---       "id_v1": "/groups/1",
---       "children": [
---         {
---           "rid": "01409ea5-3435-4be6-9698-469021626b26",
---           "rtype": "device"
---         },
---         {
---           "rid": "b372bc87-6fe5-4b1d-a2c7-294628874dd0",
---           "rtype": "device"
---         }
---       ],
---       "services": [
---         {
---           "rid": "1c99d52a-b4e6-44ff-9331-61cfcbd678eb",
---           "rtype": "grouped_light"
---         }
---       ],
---       "metadata": {
---         "name": "JP office",
---         "archetype": "office"
---       },
---       "type": "room"
---     }
--}
+mkResources :: AppState -> [ResourceGet]
+mkResources st@AppState{..} = brs ++ lrs ++ rrs where
+  brs = [RDevice d, RBridge b] where (d,b) = mkBridge st
+  lrs = concat [[RDevice dr, RLight lr]
+               | (a,lc) <- Map.assocs lights
+               , Just i <- [Map.lookup a lightIds]
+               , Just z <- [Map.lookup a zigDevices]
+               , Just ls <- [Map.lookup (lightNotifyTopic lc) lightStates]
+               , let (dr,lr) = mkLight i z lc ls ]
+  rrs = concat [[RGroup gr, RLight lr]
+               | g <- Map.elems groups
+               , let (gr,lr) = mkRoom st g ]

@@ -77,16 +77,27 @@ hueServerV1 = getDescription
          :<|> getScenes
 
 hueServerV2 :: ServerT V2.HueApiV2 HueHandler
-hueServerV2 = eventStreamGet :<|> bridgeGet
+hueServerV2 = eventStreamGet
+  :<|> bridgeGet
+  :<|> resourcesGet
 
 okResponse1 :: a -> V2.Response a
-okResponse1 x = V2.Response [x] []
+okResponse1 x = okResponse [x]
+
+okResponse :: [a] -> V2.Response a
+okResponse x = V2.Response x []
+
+resourcesGet  :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.ResourceGet)
+resourcesGet userId = do
+  verifyUser2 userId
+  r <- askingState mkResources
+  return $ okResponse $ r
 
 bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet)
 bridgeGet userId = do
-  netCfg <- askConfig
   verifyUser2 userId
-  return $ okResponse1 $ V2.bridge netCfg
+  b <- snd <$> askingState mkBridge
+  return $ okResponse1 $ b
 
 pausedEventStream :: S.StepT IO a
 pausedEventStream = S.Effect (threadDelay 1000000 >> return pausedEventStream)
