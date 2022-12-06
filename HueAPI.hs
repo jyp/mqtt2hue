@@ -21,7 +21,6 @@ import Prelude ()
 import Prelude.Compat
 import MyAeson
 import Data.Aeson
-import Data.Aeson.Types
 import GHC.Generics
 import Servant
 import Data.Map (Map)
@@ -35,6 +34,8 @@ import Xmlbf as X
 import Web.Internal.FormUrlEncoded
 import qualified Data.HashMap.Strict as H
 import Data.ByteString.Lazy (fromStrict)
+import Types
+
 
 type HueApi =
   "description.xml" :> Get '[XML] [Node] :<|>
@@ -269,10 +270,6 @@ data Config = Config
     whitelist :: [WhiteListEntry]
   } deriving (Eq, Show, Generic)
 
-data Null = Null
-  deriving (Eq, Show, Generic)
-instance ToJSON Null where
-  toJSON HueAPI.Null = Data.Aeson.Types.Null
 
 data CfgUpdate2 = CfgUpdate2 {
     checkforupdate :: Bool,

@@ -148,7 +148,7 @@ mkLightService friendly_name serviceId path owner
     ,color_temperature =
      if TemperatureMode `elem` supported_color_modes
        then
-        Just ColorTemp
+        Just ColorTempGet
         {mirek = fromMaybe 200 color_temp
         ,mirek_valid = isJust color_temp && (mode == Just TemperatureMode)
         ,mirek_schema = MirekSchema
@@ -248,7 +248,7 @@ actionHue2Mqtt LightPut{..} = MQTT.Action {
   ,state = (<$> on) $ \case
       IsOn True -> ON
       IsOn False -> OFF
-  ,color_temp = fmap (\ColorTemp{mirek} -> mirek) color_temperature
+  ,color_temp = fmap (\ColorTempSet{mirek} -> mirek) color_temperature
   ,scene_recall = Nothing
   }
 
@@ -258,7 +258,6 @@ identStoreAddr (Identifier (Word128 i _)) (IEEEAddress j)  = Identifier (Word128
 identLoadAddr :: Identifier -> IEEEAddress
 identLoadAddr (Identifier (Word128 _ i)) = IEEEAddress i
 
-
 translateLightAction :: Identifier -> LightPut -> AppState -> AgendaItem
 translateLightAction i a0 AppState{lights} = mkLightAction l a
  where a = actionHue2Mqtt a0
@@ -266,6 +265,11 @@ translateLightAction i a0 AppState{lights} = mkLightAction l a
          Nothing -> error ("translate light: unknown addr" <> show addr)
          Just x -> x         
        addr = identLoadAddr i
-       -- update the state so that immediate queries will get the
-       -- optimistically updated state. The real state update will
-       -- occur later when MQTT sends back the true updated light state.
+
+translateGroupAction :: Identifier -> LightPut -> AppState -> AgendaItem
+translateGroupAction i a0 AppState{groups} = mkGroupAction l a
+ where a = actionHue2Mqtt a0
+       l = case Map.lookup gid groups of
+         Nothing -> error ("translate group: unknown gid" <> show gid)
+         Just x -> x         
+       gid = identLoad i

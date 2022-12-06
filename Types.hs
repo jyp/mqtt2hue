@@ -66,3 +66,8 @@ macHex (MAC a b c d e f) = printf "%02x%02x%02x%02x%02x%02x" a b c d e f
 
 hash128 :: LargeHashable a => a -> Word128
 hash128 = unMD5Hash . largeHash md5HashAlgorithm
+
+data Null = Null
+  deriving (Eq, Show, Generic)
+instance ToJSON Null where
+  toJSON Types.Null = Data.Aeson.Null

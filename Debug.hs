@@ -25,8 +25,10 @@ protoMsg = \case
 
 activeProtocol :: Protocol -> Bool
 activeProtocol = \case
-  Hue -> True
-  _ -> False
+  -- Hue -> True
+  -- _ -> False
+  SSDP -> False
+  _ -> True
 
 activeClass :: DebugClass -> Bool
 activeClass = \case

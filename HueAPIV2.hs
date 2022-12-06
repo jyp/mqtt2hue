@@ -40,7 +40,9 @@ type HueApiV2
   :<|> ClipV2 ("resource" :> "bridge" :> Get '[JSON] (Response BridgeGet))
   :<|> ClipV2 ("resource" :> "geolocation" :> Get '[JSON] (Response GeoLocationGet))
   :<|> ClipV2 ("resource" :> "geofence_client" :> Get '[JSON] (Response GeoFenceGet))
+  :<|> ClipV2 ("resource" :> "behavior_instance" :> Get '[JSON] (Response Null))
   :<|> ClipV2 ("resource" :> "light" :> Capture "lightid" Identifier :> ReqBody '[JSON] LightPut :> Put '[JSON] Text)
+  :<|> ClipV2 ("resource" :> "grouped_light" :> Capture "lightid" Identifier :> ReqBody '[JSON] LightPut :> Put '[JSON] Text)
  
 
 newtype Identifier = Identifier Word128 deriving (Eq, Ord)
@@ -70,7 +72,7 @@ identStore :: Identifier -> Int -> Identifier
 identStore i x = (i .&. complement (fromInt 0xFFFF)) .|. fromInt x
 
 identLoad :: Identifier -> Int
-identLoad (Identifier (Word128 _ i)) = fromIntegral (i .&. 0xFFFFFFFF)
+identLoad (Identifier (Word128 _ i)) = fromIntegral (i .&. 0xFFFF)
 
 instance FromHttpApiData Identifier where
   parseUrlPiece x =
@@ -92,8 +94,6 @@ instance Show Identifier where
 
 instance ToJSON Identifier where
   toJSON i = String (pack (show i))
-
-
 
 data Brightness = Brightness { brightness :: Int } deriving (Eq,Show,Generic)
 data ColorSet = ColorSet { xy :: XY } deriving (Show,Generic)
@@ -279,12 +279,12 @@ data MirekSchema = MirekSchema {
           mirek_maximum :: Int
         }   deriving (Generic)
 instance FromJSON MirekSchema where parseJSON = myGenericParseJSON
-data ColorTemp = ColorTemp {
+data ColorTempGet = ColorTempGet {
         mirek :: Int,
         mirek_valid :: Bool, -- true if light is in full color mode
         mirek_schema :: MirekSchema
       } deriving (Generic)
-instance FromJSON ColorTemp where parseJSON = myGenericParseJSON
+instance FromJSON ColorTempGet where parseJSON = myGenericParseJSON
 data XY = XY {x, y :: Float} deriving (Generic, Show)
 instance FromJSON XY where parseJSON = myGenericParseJSON
 data Gamut = Gamut {red , green , blue :: XY} deriving (Generic,Show)
@@ -317,7 +317,7 @@ data LightGet = LightGet {
       on :: IsOn,
       dimming :: Maybe Dimming,
       -- "dimming_delta": {},
-      color_temperature :: Maybe ColorTemp,
+      color_temperature :: Maybe ColorTempGet,
       -- "color_temperature_delta": {},
       color :: Maybe ColorGet,
       dynamics :: Dynamics,
@@ -331,7 +331,7 @@ data LightPut = LightPut
   {
       on :: Maybe IsOn,
       dimming :: Maybe Dimming,
-      color_temperature :: Maybe ColorTemp,
+      color_temperature :: Maybe ColorTempSet,
       color :: Maybe ColorGet
   } deriving Generic
 instance FromJSON LightPut where parseJSON = myGenericParseJSON
@@ -413,7 +413,8 @@ instance FromJSON IsOn
 instance ToJSON IsOn
 instance ToJSON Dimming
 instance ToJSON ColorTempSet
-instance ToJSON ColorTemp
+instance FromJSON ColorTempSet
+instance ToJSON ColorTempGet
 instance ToJSON Action
 instance ToJSON Dynamics
 instance ToJSON MirekSchema

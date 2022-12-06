@@ -87,7 +87,9 @@ hueServerV2 = eventStreamGet
   :<|> bridgeGet
   :<|> geolocationGet
   :<|> geoFenceGet
+  :<|> nothingGet
   :<|> lightPut
+  :<|> groupPut
 
 okResponse1 :: a -> V2.Response a
 okResponse1 x = okResponse [x]
@@ -95,19 +97,30 @@ okResponse1 x = okResponse [x]
 okResponse :: [a] -> V2.Response a
 okResponse x = V2.Response x []
 
+
 lightPut :: Maybe Text -> V2.Identifier -> V2.LightPut -> ReaderT ServerState Handler Text
 lightPut userId lid a0 = do
   verifyUser2 userId
-  liftIO $ debug (Input Hue) ("Light state " <> Text.pack (show lid) {-<> " " <> Text.pack (show a0)-})
+  liftIO $ debug (Input Hue) ("New light state " <> Text.pack (show lid) {-<> " " <> Text.pack (show a0)-})
   as <- askingState (V2.translateLightAction lid a0)
   runAgenda [as]
-  return "Updated."
+
+groupPut :: Maybe Text -> V2.Identifier -> V2.LightPut -> ReaderT ServerState Handler Text
+groupPut userId lid a0 = do
+  verifyUser2 userId
+  liftIO $ debug (Input Hue) ("New group state " <> Text.pack (show lid) {-<> " " <> Text.pack (show a0)-})
+  as <- askingState (V2.translateGroupAction lid a0)
+  runAgenda [as]
 
 resourcesGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.ResourceGet)
 resourcesGet userId = do
   verifyUser2 userId
   r <- askingState mkResources
   return $ okResponse $ r
+
+nothingGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response a)
+nothingGet = v2call $ do
+  return $ okResponse []
 
 geolocationGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GeoLocationGet)
 geolocationGet = v2call $ do
@@ -279,7 +292,7 @@ getBridgeConfig = do
                                        ,swupdate = Disconnected
                                        }
   ,factorynew = False
-  ,replacesbridgeid = HueAPI.Null
+  ,replacesbridgeid = Types.Null
   ,backup = Backup {status = HueAPI.Idle
                    ,errorcode = 0
                    }
@@ -367,7 +380,7 @@ putGroup :: Text -> Int -> HueAPI.Action -> HueHandler Text.Text
 putGroup userId groupId a0 = do
   verifyUser userId
   liftIO $ debug (Input Hue) (Text.pack (show groupId) <> " " <> Text.pack (show a0))
-  as <- withAppState (translateGroupAction groupId a0)
+  as <- withAppState (V1.translateGroupAction groupId a0)
   runAgenda as
 
 appPublish :: (ToJSON a) => Topic -> a -> HueHandler ()
