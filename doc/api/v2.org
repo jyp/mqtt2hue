@@ -6757,6 +6757,8 @@
 ** PUT /clip/v2/resource/light/67dfc0fd-0c82-be2f-7af6-ab7b338d0001
   Request Body: {"on":{"on":false}}
 
+** PUT /clip/v2/resource/grouped_light/4a22c5cd-7eba-c711-c5de-14d59d240001
+  Request Body: {"on":{"on":true}}
 
 * Events
 
