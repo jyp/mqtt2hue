@@ -241,10 +241,10 @@ verifyUser userId = do
     throwError err300
 
 
-
 getBridgeConfig :: HueHandler Config
 getBridgeConfig = do
  netCfg@NetConfig {..} <- askConfig
+ users <- liftIO $ readMVar dbVar
  now <- liftIO getCurrentTime
  return $ Config
   {name = "MQTT2hue" -- "Philips Hue"
@@ -279,7 +279,7 @@ getBridgeConfig = do
                            ,autoinstall = AutoInstall {updatetime = TimeOfDay 3 0 0
                                                       ,on = True }
                            }
-  ,linkbutton = False
+  ,linkbutton = False -- FIXME
   ,portalservices = True
   ,portalconnection = Disconnected
   ,portalstate = PortalState {signedon = False
@@ -298,7 +298,7 @@ getBridgeConfig = do
                    ,errorcode = 0
                    }
   ,starterkitid = ""
-  ,whitelist = []
+  ,whitelist = [] -- FIXME
   ,mac=Text.pack (macHex mac)
   ,..
   }

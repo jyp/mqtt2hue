@@ -326,8 +326,12 @@ instance ToJSON Status where
   toJSON = \case
     Idle -> "idle"
 data WhiteListEntry = WhiteListEntry
+  {last_use_date, create_date :: TimeStamp
+  ,name :: Text
+  }
   deriving (Eq, Show, Generic)
-instance ToJSON WhiteListEntry
+instance ToJSON WhiteListEntry where
+  toJSON = genericToJSON _
 type TimeStamp = UTCTime
 
 data SceneType = GroupScene | LightScene deriving (Generic, Eq, Show)
