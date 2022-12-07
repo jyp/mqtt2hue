@@ -267,7 +267,7 @@ data Config = Config
     replacesbridgeid :: Null,
     backup :: Backup,
     starterkitid :: Text,
-    whitelist :: [WhiteListEntry]
+    whitelist :: Map Text WhiteListEntry
   } deriving (Eq, Show, Generic)
 
 
@@ -314,24 +314,25 @@ instance ToJSON InternetServices
 data Connection = Connected | Disconnected
   deriving (Eq, Show, Generic)
 instance ToJSON Connection where
-  toJSON = \case
-    Connected -> "connected"
-    Disconnected -> "disconnected"
+  toJSON = myGenericToJSON
 data Backup = Backup { status :: Status, errorcode :: Int}
   deriving (Eq, Show, Generic)
 instance ToJSON Backup
 data Status = Idle
   deriving (Eq, Show, Generic)
 instance ToJSON Status where
-  toJSON = \case
-    Idle -> "idle"
+  toJSON = myGenericToJSON
 data WhiteListEntry = WhiteListEntry
   {last_use_date, create_date :: TimeStamp
   ,name :: Text
   }
   deriving (Eq, Show, Generic)
 instance ToJSON WhiteListEntry where
-  toJSON = genericToJSON _
+  toJSON = genericToJSON defaultOptions
+    {fieldLabelModifier = fmap $ \case
+        '_' -> ' '
+        x -> x
+    }
 type TimeStamp = UTCTime
 
 data SceneType = GroupScene | LightScene deriving (Generic, Eq, Show)

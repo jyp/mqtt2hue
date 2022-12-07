@@ -21,6 +21,8 @@ import Data.Hashable
 import Network.Info             (MAC(..))
 import Text.Printf
 import Data.LargeHashable
+import Data.Map.Strict (Map)
+import Data.Word
 
 data ServerConfig = ServerConfig { netInterface :: String,
                                    usersFilePath :: String,
@@ -37,16 +39,16 @@ data NetConfig = NetConfig { mac :: MAC,
                              timezone,
                              gateway :: Text } deriving (Generic, Show)
 
+macContents :: MAC -> [Word8]
 macContents (MAC a b c d e f) = [a,b,c,d,e,f]
 
 data UserEntry = UserEntry
-  {applicationKey :: Text
-  ,applicationIdentifier :: Text
-  ,creationDate :: UTCTime} deriving Generic
+  {applicationIdentifier :: Text
+  ,creationDate, lastUseDate :: UTCTime} deriving Generic
 instance ToJSON UserEntry
 instance FromJSON UserEntry
 
-type DataBase = [UserEntry]
+type DataBase = Map Text UserEntry
 
 -- data Word128 = Word128 !Word64 !Word64 deriving (Eq,Ord)
 

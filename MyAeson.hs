@@ -17,7 +17,6 @@ options =
     {omitNothingFields=True
     ,fieldLabelModifier = \case ('_':rest) -> rest; x -> x
     ,constructorTagModifier = fmap toLower}
-
   
 myDeriveToJSON :: Name -> Q [Dec]
 myDeriveToJSON = deriveToJSON options

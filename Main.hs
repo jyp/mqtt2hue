@@ -41,7 +41,8 @@ main = do
     (itf:_) -> configured cfg itf
 
 configured :: ServerConfig -> NetworkInterface -> IO ()
-configured cfg@ServerConfig{certificatePath} itf = do    
+configured cfg@ServerConfig{certificatePath} itf = do
+  Text.putStrLn "Configured"
   mv <- newEmptyMVar
   button <- newEmptyMVar
   semas <- newMVar mempty
@@ -64,9 +65,12 @@ configured cfg@ServerConfig{certificatePath} itf = do
 
   st <- newMVar (blankAppState netCfg)
 
+  Text.putStrLn "Loading user file"
   db <- newMVar =<< decodeFileThrow (usersFilePath cfg) 
+  Text.putStrLn "Loaded"
   let s = ServerState cfg netCfg st mv db button semas
   _ <- forkIO (mqttThread s)
+  Text.putStrLn "MQTT thread running"
   let app = logStdoutDev (hueApp s)
   withStdoutLogger $ \aplogger -> do
     let tlsOpts = tlsSettings (certificatePath <> "/cert.pem") (certificatePath <> "/privkey.pem")

@@ -216,9 +216,10 @@ createUser CreateUser {devicetype=applicationIdentifier} = do
   dbFname <- asks (usersFilePath . serverConfig)
   applicationKey <- liftIO $ (Text.pack . show128 <$> takeMVar but)
   creationDate <- liftIO getCurrentTime
+  let lastUseDate = creationDate 
   liftIO $ modifyMVarMasked_ dbVar $
     \users -> do
-      let db = UserEntry{..}:users
+      let db = Map.insert applicationKey UserEntry{..} users
       Data.Yaml.encodeFile dbFname db
       return db
   return [CreatedUser $ UserName applicationKey]
@@ -236,14 +237,20 @@ verifyUser2 = \case
 verifyUser :: Text -> HueHandler ()
 verifyUser userId = do
   dbVar <- asks database
-  users <- liftIO $ readMVar dbVar
-  when (notElem userId (applicationKey <$> users)) $
+  found <- liftIO $ modifyMVarMasked dbVar $
+    \db -> do
+      --  -- FIXME: save the file 
+      now <- getCurrentTime
+      return (alter (fmap (\u -> u {lastUseDate = now})) userId db
+             ,userId `Map.member` db) 
+  unless found $
     throwError err300
 
 
 getBridgeConfig :: HueHandler Config
 getBridgeConfig = do
  netCfg@NetConfig {..} <- askConfig
+ dbVar <- asks database
  users <- liftIO $ readMVar dbVar
  now <- liftIO getCurrentTime
  return $ Config
@@ -298,7 +305,12 @@ getBridgeConfig = do
                    ,errorcode = 0
                    }
   ,starterkitid = ""
-  ,whitelist = [] -- FIXME
+  ,whitelist = fromList [ (applicationKey,
+                           WhiteListEntry {
+                              last_use_date = lastUseDate,
+                              create_date = creationDate,
+                              name = applicationIdentifier})
+                        | (applicationKey,UserEntry{..}) <- Map.assocs users ]
   ,mac=Text.pack (macHex mac)
   ,..
   }
