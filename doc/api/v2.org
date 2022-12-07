@@ -6757,6 +6757,7 @@
   Accept: 
   Status: 404 Not Found 0.000014965s
 
+** GET /clip/v2/resource/motion
 
 ** PUT /clip/v2/resource/light/67dfc0fd-0c82-be2f-7af6-ab7b338d0001
   Request Body: {"on":{"on":false}}

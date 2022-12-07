@@ -88,6 +88,7 @@ hueServerV2 = eventStreamGet
   :<|> geolocationGet
   :<|> geoFenceGet
   :<|> nothingGet
+  :<|> nothingGet
   :<|> lightPut
   :<|> groupPut
 
@@ -142,7 +143,7 @@ pausedEventStream = S.Effect (threadDelay 1000000 >> return pausedEventStream)
 eventStreamGet :: Maybe Text -> ReaderT ServerState Handler (S.SourceT IO SSE)
 eventStreamGet userId = do
   verifyUser2 userId
-  return (S.fromStepT s) -- FIXME: broken.
+  return (S.fromStepT s)
        where s = S.Yield HelloEv pausedEventStream
                -- S.Effect (threadDelay 1000000 >> return s)
   -- where s = S.Yield (V2.Event {resource = LightRes
@@ -257,8 +258,8 @@ getBridgeConfig = do
   ,modelid = mkModelId
   ,datastoreversion = "131"
   ,swversion = "1953188020"
-  -- ,apiversion = "1.53.0"
-  ,apiversion = "1.45.0" -- last version not to support event stream
+  ,apiversion = "1.53.0"
+  -- ,apiversion = "1.45.0" -- last version not to support event stream
   ,swupdate = CfgUpdate1 {updatestate = 0
                          ,checkforupdate = False
                          ,devicetypes = DeviceTypes {bridge = False
