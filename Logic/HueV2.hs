@@ -176,6 +176,8 @@ mkLightService friendly_name serviceId path owner
     ,_type = LightResource
     }
 
+
+
 mkRoom :: AppState -> GroupConfig -> (GroupGet, LightGet)
 mkRoom AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
   groupedLightId = identStore (hashableToId friendly_name) gid
@@ -226,6 +228,9 @@ mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc]
   rrs = concat [[RGroup gr, RLight lr]
                | g <- Map.elems groups
                , let (gr,lr) = mkRoom st g ]
+
+mkLights :: AppState -> [LightGet]
+mkLights st = [l | RLight l <- mkResources st] 
 
 mkGeoFence :: GeoFenceGet
 mkGeoFence = GeoFenceGet {_id = hashableToId ("geofence-client" :: Text)

@@ -3,6 +3,8 @@
   {"swupdate2":{"install":false,"autoinstall":{"on":true}}}
 
 * Clip v2
+** GET /clip/v2/resource/light
+
 ** GET /clip/v2/resource/bridge
 
 #+begin_src javascript
@@ -6758,6 +6760,8 @@
   Status: 404 Not Found 0.000014965s
 
 ** GET /clip/v2/resource/motion
+
+
 
 ** PUT /clip/v2/resource/light/67dfc0fd-0c82-be2f-7af6-ab7b338d0001
   Request Body: {"on":{"on":false}}

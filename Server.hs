@@ -22,6 +22,7 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as Lazy
 import Data.Aeson.Text
 import Data.Map
+import qualified Data.Map as Map
 import Data.Time.Clock
 import Data.Time.LocalTime
 import Network.MQTT.Client
@@ -89,6 +90,7 @@ hueServerV2 = eventStreamGet
   :<|> geoFenceGet
   :<|> nothingGet
   :<|> nothingGet
+  :<|> lightsGet
   :<|> lightPut
   :<|> groupPut
 
@@ -114,14 +116,16 @@ groupPut userId lid a0 = do
   runAgenda [as]
 
 resourcesGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.ResourceGet)
-resourcesGet userId = do
-  verifyUser2 userId
-  r <- askingState mkResources
-  return $ okResponse $ r
+resourcesGet = v2call $ do
+  okResponse <$> askingState mkResources
 
 nothingGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response a)
 nothingGet = v2call $ do
   return $ okResponse []
+
+lightsGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.LightGet)
+lightsGet = v2call $ do
+  okResponse <$> askingState mkLights
 
 geolocationGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GeoLocationGet)
 geolocationGet = v2call $ do
