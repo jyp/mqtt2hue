@@ -42,6 +42,7 @@ type HueApiV2
   :<|> ClipV2 ("resource" :> "geofence_client" :> Get '[JSON] (Response GeoFenceGet))
   :<|> ClipV2 ("resource" :> "behavior_instance" :> Get '[JSON] (Response Null))
   :<|> ClipV2 ("resource" :> "motion" :> Get '[JSON] (Response Null))
+  :<|> ClipV2 ("resource" :> "zone" :> Get '[JSON] (Response GroupGet))
   :<|> ClipV2 ("resource" :> "room" :> Get '[JSON] (Response GroupGet))
   :<|> ClipV2 ("resource" :> "light" :> Get '[JSON] (Response LightGet))
   :<|> ClipV2 ("resource" :> "light" :> Capture "lightid" Identifier :> ReqBody '[JSON] LightPut :> Put '[JSON] Text)

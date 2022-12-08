@@ -38,6 +38,7 @@ import Data.Text.Encoding
 import qualified Data.Yaml
 import Data.Text (Text)
 import Data.Text.IO as Text
+import Data.Foldable
 
 import Debug
 import Servant
@@ -91,8 +92,9 @@ hueServerV2 =
   :<|> bridgeHomeGet
   :<|> geolocationGet
   :<|> geoFenceGet
-  :<|> nothingGet
-  :<|> nothingGet
+  :<|> nothingGet -- behavior_instance
+  :<|> nothingGet -- motion
+  :<|> nothingGet -- zone
   :<|> roomsGet
   :<|> lightsGet
   :<|> lightPut
@@ -143,7 +145,9 @@ geoFenceGet = v2call $ do
   return $ okResponse1 $ mkGeoFence
 
 bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet)
-bridgeGet = v2call $ do
+bridgeGet userId = do
+  -- apps may use this call for bridge presence without giving application key
+  forM_ userId verifyUser
   okResponse1 . snd <$> askingState mkBridge
 
 pausedEventStream :: S.StepT IO a
