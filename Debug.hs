@@ -8,7 +8,7 @@ import Control.Monad (when)
 
 data Protocol = MQTT | Hue | SSDP
 
-data DebugClass = Input Protocol | Output Protocol | Button | State
+data DebugClass = Input Protocol | Output Protocol | Button | State | Authentication
 
 classMsg :: DebugClass -> Text
 classMsg = \case
@@ -16,6 +16,7 @@ classMsg = \case
   Output p -> ">>" <> protoMsg p
   Button -> "[]"
   State -> "!!"
+  Authentication -> "AA"
 
 protoMsg :: Protocol -> Text
 protoMsg = \case
@@ -25,10 +26,10 @@ protoMsg = \case
 
 activeProtocol :: Protocol -> Bool
 activeProtocol = \case
-  -- Hue -> True
-  -- _ -> False
-  SSDP -> False
-  _ -> True
+  Hue -> True
+  _ -> False
+  -- SSDP -> False
+  -- _ -> True
 
 activeClass :: DebugClass -> Bool
 activeClass = \case
@@ -36,6 +37,7 @@ activeClass = \case
   Output p -> activeProtocol p
   Button -> True
   State -> False
+  Authentication -> True
 
 debug :: DebugClass -> Text -> IO ()
 debug cls msg = do

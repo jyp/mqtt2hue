@@ -6754,14 +6754,10 @@
 #+end_src
 ** GET /clip/v2/resource/geofence_client
 ** GET /clip/v2/resource/bridge
-
 ** GET /clip/v2/resource/geolocation
 ** GET /clip/v2/resource/behavior_instance
-  Accept: 
-  Status: 404 Not Found 0.000014965s
-
 ** GET /clip/v2/resource/motion
-
+** GET /clip/v2/resource/entertainment_configuration
 
 
 ** PUT /clip/v2/resource/light/67dfc0fd-0c82-be2f-7af6-ab7b338d0001

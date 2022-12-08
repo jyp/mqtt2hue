@@ -93,6 +93,7 @@ hueServerV2 =
   :<|> geolocationGet
   :<|> geoFenceGet
   :<|> nothingGet -- behavior_instance
+  :<|> nothingGet -- entertainment_configuration
   :<|> nothingGet -- motion
   :<|> nothingGet -- zone
   :<|> roomsGet
@@ -245,7 +246,9 @@ v2call k = \userId -> do
 verifyUser2 :: Maybe Text -> HueHandler ()
 verifyUser2 = \case
   Just u -> verifyUser u
-  Nothing -> throwError err403 -- user key not provided. Perhaps give bridge info anyway here?
+  Nothing -> do
+    liftIO $ debug Authentication $ "API key not provided"
+    throwError err403
 
 verifyUser :: Text -> HueHandler ()
 verifyUser userId = do
@@ -256,8 +259,9 @@ verifyUser userId = do
       now <- getCurrentTime
       return (alter (fmap (\u -> u {lastUseDate = now})) userId db
              ,userId `Map.member` db) 
-  unless found $
-    throwError err401
+  unless found $ do
+    liftIO $ debug Authentication ("User not verified: " <> userId)
+    throwError err403
 
 
 getBridgeConfig :: HueHandler Config
