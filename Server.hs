@@ -16,6 +16,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 module Server where
 
+import Data.Maybe (isJust)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
@@ -37,8 +38,8 @@ import qualified Servant.Types.SourceT as S
 import Data.Text.Encoding
 import qualified Data.Yaml
 import Data.Text (Text)
+import Data.Text.Lazy (fromStrict)
 import Data.Text.IO as Text
-import Data.Foldable
 
 import Debug
 import Servant
@@ -124,13 +125,13 @@ groupPut userId lid a0 = do
   runAgenda [as]
 
 resourcesGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.ResourceGet)
-resourcesGet = v2call (okResponse <$> askingState mkResources)
+resourcesGet = v2call (okResponse <$> askingStateAndCfg mkResources)
 
 nothingGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response a)
 nothingGet = v2call $ return $ okResponse []
 
 lightsGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.LightGet)
-lightsGet = v2call (okResponse <$> askingState mkLights)
+lightsGet = v2call (okResponse <$> askingStateAndCfg mkLights)
 
 roomsGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GroupGet)
 roomsGet = v2call (okResponse . fmap fst <$> askingState mkRooms)
@@ -150,7 +151,8 @@ bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet
 bridgeGet userId = do
   -- apps may use this call for bridge presence without giving application key
   forM_ userId verifyUser
-  okResponse1 . snd <$> askingState mkBridge
+  cfg <- asks serverConfig
+  okResponse1 . snd <$> askingState (mkBridge cfg)
 
 pausedEventStream :: S.StepT IO a
 pausedEventStream = S.Effect (threadDelay 1000000 >> return pausedEventStream)
@@ -192,7 +194,7 @@ description NetConfig{..} =
      element "manufacturerURL" mempty (X.text "http://www.philips-hue.com") <>
      element "modelDescription" mempty (X.text "Philips hue Personal Wireless Lighting") <>
      element "modelName" mempty (X.text "Philips hue bridge 2015") <>
-     element "modelNumber" mempty (X.text "BSB002") <>
+     element "modelNumber" mempty (X.text (fromStrict mkModelId)) <>
      element "modelURL" mempty (X.text "http://www.philips-hue.com") <>
      element "serialNumber" mempty (X.text (Text.Lazy.pack (macHex mac))) <>
      element "UDN" mempty (X.text "uuid:" <> X.text (fs (getUUIDFromMacAddress mac))) <>
@@ -268,11 +270,12 @@ verifyUser userId = do
     \AppState{..} -> return AppState{appRecentTime = now,..}
   liftIO $ debug Authentication ("User: " <> userId)
   
-
-
 getBridgeConfig :: HueHandler Config
 getBridgeConfig = do
- netCfg@NetConfig {..} <- askConfig
+ netCfg@NetConfig {..} <- asks netConfig
+ ServerConfig {timezone,netmask,gateway} <- asks serverConfig
+ but <- asks buttonPressed
+ linkbutton <- liftIO (isJust <$> tryReadMVar but)
  dbVar <- asks database
  users <- liftIO $ readMVar dbVar
  now <- liftIO getCurrentTime
@@ -287,9 +290,8 @@ getBridgeConfig = do
   ,localtime = now
   ,modelid = mkModelId
   ,datastoreversion = "131"
-  ,swversion = "1953188020"
-  ,apiversion = "1.53.0"
-  -- ,apiversion = "1.45.0" -- last version not to support event stream
+  ,swversion = softwareVersionMinor
+  ,apiversion = apiVersion
   ,swupdate = CfgUpdate1 {updatestate = 0
                          ,checkforupdate = False
                          ,devicetypes = DeviceTypes {bridge = False
@@ -309,7 +311,6 @@ getBridgeConfig = do
                            ,autoinstall = AutoInstall {updatetime = TimeOfDay 3 0 0
                                                       ,on = True }
                            }
-  ,linkbutton = False -- FIXME
   ,portalservices = True
   ,portalconnection = Disconnected
   ,portalstate = PortalState {signedon = False
@@ -334,15 +335,12 @@ getBridgeConfig = do
                               create_date = creationDate,
                               name = applicationIdentifier})
                         | (applicationKey,UserEntry{..}) <- Map.assocs users ]
-  ,mac=Text.pack (macHex mac)
+  ,mac=Text.pack (macHexWithColon mac)
   ,..
   }
 
 askApp :: HueHandler AppState
 askApp = liftIO . readMVar . appState =<< ask
-
-askConfig :: HueHandler NetConfig
-askConfig = asks netConfig
 
 askingState :: (AppState -> a) -> HueHandler a
 askingState f = do
@@ -350,6 +348,11 @@ askingState f = do
   let x = f st
   -- liftIO (Data.Text.Lazy.IO.putStrLn $ encodeToLazyText x)
   return x
+
+askingStateAndCfg :: (ServerConfig -> AppState -> a) -> HueHandler a
+askingStateAndCfg f = do
+  cfg <- asks serverConfig
+  askingState (f cfg)
 
 withAppState :: (AppState -> Maybe (AppState, a)) -> HueHandler a
 withAppState f = do

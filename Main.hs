@@ -21,6 +21,7 @@ import Control.Concurrent.MVar
 
 import Logic
 import Types
+import Config
 import System.Environment
 import SSDP
 import Network.Info
@@ -48,12 +49,12 @@ configured cfg@ServerConfig{certificatePath} itf = do
   semas <- newMVar mempty
 
   let hueService = SSDPService {
-        ssOSName = "Hue/1.0",
+        ssOSName         = "Hue/1.0",
         ssInterface      = itf,
         ssPort           = 80,
         ssURI            = "/description.xml",
         ssProductName    = "IpBridge",
-        ssProductVersion = "1.48.0", -- check consistency with apiversion in Hue API. FIXME
+        ssProductVersion = apiVersion, -- check consistency with apiversion in Hue API. FIXME
         ssServiceItems   = ["urn:schemas-upnp-org:device:basic:1"]
         }
   ssdpHandle <- startSsdpServer hueService

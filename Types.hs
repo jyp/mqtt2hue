@@ -34,10 +34,7 @@ data ServerConfig = ServerConfig { netInterface :: String,
 instance LargeHashable ServerConfig
 instance FromJSON ServerConfig
 data NetConfig = NetConfig { mac :: MAC,
-                             ipaddress,
-                             netmask,
-                             timezone,
-                             gateway :: Text } deriving (Generic, Show)
+                             ipaddress :: Text } deriving (Generic, Show)
 
 macContents :: MAC -> [Word8]
 macContents (MAC a b c d e f) = [a,b,c,d,e,f]
@@ -65,6 +62,10 @@ instance Hashable ServerConfig
 
 macHex :: MAC -> String
 macHex (MAC a b c d e f) = printf "%02x%02x%02x%02x%02x%02x" a b c d e f
+
+macHexWithColon :: MAC -> String
+macHexWithColon (MAC a b c d e f) = printf "%02x:%02x:%02x:%02x:%02x:%02x" a b c d e f
+
 
 hash128 :: LargeHashable a => a -> Word128
 hash128 = unMD5Hash . largeHash md5HashAlgorithm

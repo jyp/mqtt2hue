@@ -27,8 +27,8 @@ import Data.List (nub)
 hashableToId :: LargeHashable a => a -> Identifier
 hashableToId = Identifier . hash128
 
-mkBridge :: AppState -> (DeviceGet,BridgeGet)
-mkBridge AppState{configuration=cfg} = (device,bridge) where
+mkBridge :: ServerConfig -> AppState -> (DeviceGet,BridgeGet)
+mkBridge ServerConfig{timezone} AppState{configuration=cfg} = (device,bridge) where
   devId = hashableToId ("Zigbee Controller"::Text)
   deviceRef = ResourceRef{rid=devId, rtype=DeviceResource} 
   bridgeId = hashableToId (macContents (mac cfg))
@@ -41,7 +41,7 @@ mkBridge AppState{configuration=cfg} = (device,bridge) where
       ,product_name = "Philips hue"
       ,product_archetype = BridgeV2
       ,certified = False
-      ,software_version = "1.53.1953188020"
+      ,software_version = mkSoftwareVersion
       ,hardware_platform_type = Nothing}
     ,metadata = ArchetypeMeta {name = "MQTT2Hue"
                               ,archetype = BridgeV2}
@@ -53,7 +53,7 @@ mkBridge AppState{configuration=cfg} = (device,bridge) where
       ,id_v1 = ""
       ,owner = Just deviceRef
       ,bridge_id = mkBridgeIdLower cfg
-      ,time_zone = TimeZone "Europe/Stockholm" -- FIXME: config
+      ,time_zone = TimeZone timezone
       ,_type = Bridge
       }  
 
@@ -143,7 +143,7 @@ mkLightService friendly_name serviceId path owner
                 }
     ,on = IsOn (state == ON) --  IsOn,
     ,dimming = fmap (\b -> Dimming{brightness = (100.0 / 254) * fromIntegral b
-                                   ,min_dim_level = Nothing -- fixme
+                                   ,min_dim_level = Nothing -- FIXME
                                    }) bri
     ,color_temperature =
      if TemperatureMode `elem` supported_color_modes
@@ -231,10 +231,10 @@ mkRoom AppState{..} g@GroupConfig{_id=gid,..} =
 mkRooms :: AppState -> [(GroupGet, LightGet)]
 mkRooms st@AppState{groups} = mkRoom st <$> Map.elems groups
   
-mkResources :: AppState -> [ResourceGet]
-mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc, RGroup hg, RLight hl]
+mkResources :: ServerConfig -> AppState -> [ResourceGet]
+mkResources cfg st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc, RGroup hg, RLight hl]
   where
-  brs = [RDevice d, RBridge b] where (d,b) = mkBridge st
+  brs = [RDevice d, RBridge b] where (d,b) = mkBridge cfg st
   (hg,hl) = mkBridgeHome st
   lrs = concat [[RDevice dr, RLight lr]
                | (a,lc) <- Map.assocs lights
@@ -244,8 +244,8 @@ mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc, RGroup hg,
                , let (dr,lr) = mkLight i z lc ls ]
   rrs = concat [[RGroup gr, RLight lr] | (gr,lr) <- mkRooms st]
 
-mkLights :: AppState -> [LightGet]
-mkLights st = [l | RLight l <- mkResources st] 
+mkLights :: ServerConfig -> AppState -> [LightGet]
+mkLights cfg st = [l | RLight l <- mkResources cfg st] 
 
 mkGeoFence :: GeoFenceGet
 mkGeoFence = GeoFenceGet {_id = hashableToId ("geofence-client" :: Text)
