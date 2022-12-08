@@ -89,14 +89,11 @@ lightStateMqtt2Hue MQTT.LightState {brightness,color_temp,state,color_mode,color
                       ,reachable = True -- FIXME -- linkquality ?
                       }
 
-zeroTime :: UTCTime
-zeroTime = UTCTime (toEnum 0) (toEnum 0)
-    
-lightMqtt2Hue :: MQTT.LightConfig -> HueAPI.LightState -> HueAPI.Light
-lightMqtt2Hue (MQTT.LightConfig {device = Device {name=productname,..},..}) lightState
+lightMqtt2Hue :: TimeStamp -> MQTT.LightConfig -> HueAPI.LightState -> HueAPI.Light
+lightMqtt2Hue now (MQTT.LightConfig {device = Device {name=productname,..},..}) lightState
   = Light {state = lightState 
           ,swupdate = SwUpdate {state = NoUpdates
-                               ,lastinstall = zeroTime -- FIXME
+                               ,lastinstall = now
                                }
           ,_type = if XYMode `elem` supported_color_modes then
                      ExtendedColorLight else (if TemperatureMode `elem` supported_color_modes
@@ -129,7 +126,8 @@ allHueLights st@AppState{..} = lightsMqtt2Hue st (Map.elems lights)
 
 lightsMqtt2Hue :: AppState -> [MQTT.LightConfig] -> Map Int Light
 lightsMqtt2Hue st@AppState{..} ls
-  = Map.fromList [(i,lightMqtt2Hue l (lightStateMqtt2Hue (getLightState st l)))
+  = Map.fromList [(i,lightMqtt2Hue appRecentTime l
+                     (lightStateMqtt2Hue (getLightState st l)))
                  | l <- ls
                  , let Just i = Map.lookup (lightAddress l) lightIds]
 
@@ -185,7 +183,7 @@ allHueGroups st@AppState{groups}
                  | (_id,g) <- Map.assocs groups]
 
 allHueScenes :: AppState -> Map Int Scene
-allHueScenes st@AppState{groups}
+allHueScenes st@AppState{groups,appRecentTime}
   = Map.fromList
   [ (sid, -- hue bridge uses a 16 character string. But this will do.
      Scene{name = name
@@ -197,7 +195,7 @@ allHueScenes st@AppState{groups}
           ,locked = True
           ,appdata = Nothing
           ,picture = ""
-          ,lastupdated = zeroTime
+          ,lastupdated = appRecentTime
           ,version = 2})
   | (gid,g@GroupConfig{scenes})<- Map.assocs groups
   , SceneRef{_id=sid,name} <- scenes ]

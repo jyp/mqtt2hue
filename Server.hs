@@ -253,16 +253,21 @@ verifyUser2 = \case
 
 verifyUser :: Text -> HueHandler ()
 verifyUser userId = do
+  now <- liftIO getCurrentTime
   dbVar <- asks database
   found <- liftIO $ modifyMVarMasked dbVar $
     \db -> do
       --  -- FIXME: save the file 
-      now <- getCurrentTime
       return (alter (fmap (\u -> u {lastUseDate = now})) userId db
              ,userId `Map.member` db) 
   unless found $ do
     liftIO $ debug Authentication ("User not verified: " <> userId)
     throwError err403
+  st <- asks appState
+  liftIO $ modifyMVarMasked_ st $
+    \AppState{..} -> return AppState{appRecentTime = now,..}
+  liftIO $ debug Authentication ("User: " <> userId)
+  
 
 
 getBridgeConfig :: HueHandler Config

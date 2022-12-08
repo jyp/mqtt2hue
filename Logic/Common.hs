@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE EmptyDataDeriving #-}
@@ -30,12 +29,16 @@ import Data.Map.Strict (Map)
 import Data.Text (Text,splitOn,unpack)
 import Text.Read (readMaybe)
 import Data.Aeson (ToJSON(..))
+import Data.Time.Clock
 import qualified Data.List as List
 import qualified Data.Text as Text
 import Types (NetConfig(..))
 
+zeroTime :: UTCTime
+zeroTime = UTCTime (toEnum 0) (toEnum 0)
+
 blankAppState :: NetConfig -> AppState 
-blankAppState cfg = AppState cfg mempty mempty mempty mempty mempty mempty mempty 
+blankAppState cfg = AppState zeroTime cfg mempty mempty mempty mempty mempty mempty mempty 
 
 data AgendaItem = forall a. ToJSON a => AgendaItem
   { outTopic :: Text
@@ -44,7 +47,8 @@ data AgendaItem = forall a. ToJSON a => AgendaItem
 
 
 data AppState = AppState
-  {configuration :: !NetConfig
+  {appRecentTime :: !UTCTime
+  ,configuration :: !NetConfig
   ,lights :: !(Map IEEEAddress MQTTAPI.LightConfig)
   ,lightStates :: !(Map Text MQTTAPI.LightState) -- map from topic to state. Lights and groups here.
   ,switchStates :: !(Map Text MQTTAPI.SwitchState) -- map from topic to state. Switches here.

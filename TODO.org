@@ -1,3 +1,4 @@
+- clean user list (if 2 same api keyes)
 - Fix getBridgeConfig (in particular whitelist)
 - make all the state structure strict (transitively)
 - Don't make several copies of the same user in users.yaml
