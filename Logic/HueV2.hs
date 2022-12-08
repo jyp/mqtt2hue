@@ -228,7 +228,9 @@ mkRoom AppState{..} g@GroupConfig{_id=gid,..} =
                              }
   nm = toCaseFold friendly_name
 
-
+mkRooms :: AppState -> [(GroupGet, LightGet)]
+mkRooms st@AppState{groups} = mkRoom st <$> Map.elems groups
+  
 mkResources :: AppState -> [ResourceGet]
 mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc, RGroup hg, RLight hl]
   where
@@ -240,9 +242,7 @@ mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc, RGroup hg,
                , Just z <- [Map.lookup a zigDevices]
                , Just ls <- [Map.lookup (lightNotifyTopic lc) lightStates]
                , let (dr,lr) = mkLight i z lc ls ]
-  rrs = concat [[RGroup gr, RLight lr]
-               | g <- Map.elems groups
-               , let (gr,lr) = mkRoom st g ]
+  rrs = concat [[RGroup gr, RLight lr] | (gr,lr) <- mkRooms st]
 
 mkLights :: AppState -> [LightGet]
 mkLights st = [l | RLight l <- mkResources st] 

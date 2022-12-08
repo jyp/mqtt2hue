@@ -4,6 +4,7 @@
 
 * Clip v2
 ** GET /clip/v2/resource/light
+** GET /clip/v2/resource/room
 ** GET /clip/v2/resource/bridge_home
 ** GET /clip/v2/resource/bridge
 

@@ -93,6 +93,7 @@ hueServerV2 =
   :<|> geoFenceGet
   :<|> nothingGet
   :<|> nothingGet
+  :<|> roomsGet
   :<|> lightsGet
   :<|> lightPut
   :<|> groupPut
@@ -126,6 +127,9 @@ nothingGet = v2call $ return $ okResponse []
 
 lightsGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.LightGet)
 lightsGet = v2call (okResponse <$> askingState mkLights)
+
+roomsGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GroupGet)
+roomsGet = v2call (okResponse . fmap fst <$> askingState mkRooms)
 
 bridgeHomeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GroupGet)
 bridgeHomeGet = v2call (okResponse1 . fst <$> askingState mkBridgeHome)
