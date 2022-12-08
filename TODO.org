@@ -1,5 +1,5 @@
-
 - Fix getBridgeConfig (in particular whitelist)
+- make all the state structure strict (transitively)
 - Don't make several copies of the same user in users.yaml
 - use logic monad to record statuses
 - get the group state upon starting the server (how?)

@@ -178,14 +178,20 @@ mkLightService friendly_name serviceId path owner
 
 
 
-mkRoom :: AppState -> GroupConfig -> (GroupGet, LightGet)
-mkRoom AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
+mkBridgeHome :: AppState -> (GroupGet, LightGet)
+mkBridgeHome st@AppState{..} = mkGroup 0 "# Home group #" BridgeHome ls as groupLightState Nothing
+  where as = Map.keys lights
+        ls = Map.elems lights
+        groupLightState = combineLightStates (getLightState st <$> ls)
+
+mkGroup :: Int -> Text -> ResourceType -> [LightConfig]
+        -> [IEEEAddress] -> LightState -> Maybe ArchetypeMeta -> (GroupGet, LightGet)
+mkGroup gid friendly_name rtype lightCfgs lAddrs groupLightState metadata = (grp,light) where
   groupedLightId = identStore (hashableToId friendly_name) gid
-  roomId = identStore (hashableToId friendly_name) gid
-  roomRef = ResourceRef roomId Room
-  light = mkLightService friendly_name groupedLightId ("/group/" <> pack (show gid)) roomRef (cmode,mmin,mmax) groupLightState
-  memberAddresses = [a | GroupMember{ieee_address=a} <- members]
-  lightCfgs = catMaybes [Map.lookup a lights | a <- memberAddresses]
+  roomId = hashableToId (friendly_name,gid)
+  roomRef = ResourceRef roomId rtype
+  id_v1 = "/groups/" <> pack (show gid)
+  light = mkLightService friendly_name groupedLightId id_v1 roomRef (cmode,mmin,mmax) groupLightState
   cmode = nub $ concat (supported_color_modes <$> lightCfgs)
   mmin = case catMaybes (min_mireds <$> lightCfgs) of
     [] -> Nothing
@@ -193,13 +199,22 @@ mkRoom AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
   mmax = case catMaybes (max_mireds <$> lightCfgs) of
     [] -> Nothing
     xs -> Just (minimum xs)
-  groupLightState = fromMaybe blankLightState (Map.lookup (groupNotifyTopic g) lightStates )
-  room = GroupGet
+  grp = GroupGet
    {_id = roomId
-   ,id_v1 = "/groups/" <> pack (show gid)
-   ,children = [mkDeviceRef a | a <- memberAddresses] -- devices
+   ,children = [mkDeviceRef a | a <- lAddrs] -- devices
    ,services = [ResourceRef groupedLightId GroupedLight]
-   ,metadata = ArchetypeMeta {name = friendly_name
+   ,_type = rtype
+   ,..
+   }
+
+mkRoom :: AppState -> GroupConfig -> (GroupGet, LightGet)
+mkRoom AppState{..} g@GroupConfig{_id=gid,..} =
+  mkGroup gid friendly_name Room lightCfgs memberAddresses groupLightState metadata
+ where
+  memberAddresses = [a | GroupMember{ieee_address=a} <- members]
+  lightCfgs = catMaybes [Map.lookup a lights | a <- memberAddresses]
+  groupLightState = fromMaybe blankLightState (Map.lookup (groupNotifyTopic g) lightStates )
+  metadata = Just $ ArchetypeMeta {name = friendly_name
                              ,archetype = case () of
                                  _ | "office" `isInfixOf` nm -> Office
                                  _ | "bedroom" `isInfixOf` nm -> Bedroom
@@ -211,14 +226,14 @@ mkRoom AppState{..} g@GroupConfig{_id=gid,..} = (room,light) where
                                  _ | "living" `isInfixOf` nm -> LivingRoom
                                  _ -> Bedroom
                              }
-   ,_type = Room
-   }
   nm = toCaseFold friendly_name
 
+
 mkResources :: AppState -> [ResourceGet]
-mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc]
+mkResources st@AppState{..} = brs ++ lrs ++ rrs ++ [RGeoLoc mkGeoLoc, RGroup hg, RLight hl]
   where
   brs = [RDevice d, RBridge b] where (d,b) = mkBridge st
+  (hg,hl) = mkBridgeHome st
   lrs = concat [[RDevice dr, RLight lr]
                | (a,lc) <- Map.assocs lights
                , Just i <- [Map.lookup a lightIds]

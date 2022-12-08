@@ -25,8 +25,8 @@ module Logic.Common
   ) where
 import Data.Maybe
 import MQTTAPI
-import qualified Data.Map as Map
-import Data.Map (Map)
+import qualified Data.Map.Strict as Map
+import Data.Map.Strict (Map)
 import Data.Text (Text,splitOn,unpack)
 import Text.Read (readMaybe)
 import Data.Aeson (ToJSON(..))
@@ -44,14 +44,14 @@ data AgendaItem = forall a. ToJSON a => AgendaItem
 
 
 data AppState = AppState
-  {configuration :: NetConfig
-  ,lights :: Map IEEEAddress MQTTAPI.LightConfig
-  ,lightStates :: Map Text MQTTAPI.LightState -- map from topic to state. Lights and groups here.
-  ,switchStates :: Map Text MQTTAPI.SwitchState -- map from topic to state. Switches here.
-  ,lightIds :: Map IEEEAddress Int -- give hue v1 id here
-  ,zigDevices :: Map IEEEAddress ZigDevice
-  ,groups :: Map Int MQTTAPI.GroupConfig
-  ,groupLastRecallScene :: Map Int Int -- map from group id to last activated scene
+  {configuration :: !NetConfig
+  ,lights :: !(Map IEEEAddress MQTTAPI.LightConfig)
+  ,lightStates :: !(Map Text MQTTAPI.LightState) -- map from topic to state. Lights and groups here.
+  ,switchStates :: !(Map Text MQTTAPI.SwitchState) -- map from topic to state. Switches here.
+  ,lightIds :: !(Map IEEEAddress Int) -- give hue v1 id here
+  ,zigDevices :: !(Map IEEEAddress ZigDevice)
+  ,groups :: !(Map Int MQTTAPI.GroupConfig)
+  ,groupLastRecallScene :: !(Map Int Int) -- map from group id to last activated scene
   } deriving Show
 
 lightSetTopic :: MQTTAPI.LightConfig -> Text

@@ -37,6 +37,7 @@ import qualified Servant.Types.SourceT as S
 import Data.Text.Encoding
 import qualified Data.Yaml
 import Data.Text (Text)
+import Data.Text.IO as Text
 
 import Debug
 import Servant
@@ -83,9 +84,11 @@ hueServerV1 = getDescription
 
 
 hueServerV2 :: ServerT V2.HueApiV2 HueHandler
-hueServerV2 = eventStreamGet
+hueServerV2 =
+       eventStreamGet
   :<|> resourcesGet
   :<|> bridgeGet
+  :<|> bridgeHomeGet
   :<|> geolocationGet
   :<|> geoFenceGet
   :<|> nothingGet
@@ -116,16 +119,16 @@ groupPut userId lid a0 = do
   runAgenda [as]
 
 resourcesGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.ResourceGet)
-resourcesGet = v2call $ do
-  okResponse <$> askingState mkResources
+resourcesGet = v2call (okResponse <$> askingState mkResources)
 
 nothingGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response a)
-nothingGet = v2call $ do
-  return $ okResponse []
+nothingGet = v2call $ return $ okResponse []
 
 lightsGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.LightGet)
-lightsGet = v2call $ do
-  okResponse <$> askingState mkLights
+lightsGet = v2call (okResponse <$> askingState mkLights)
+
+bridgeHomeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GroupGet)
+bridgeHomeGet = v2call (okResponse1 . fst <$> askingState mkBridgeHome)
 
 geolocationGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.GeoLocationGet)
 geolocationGet = v2call $ do
@@ -136,10 +139,8 @@ geoFenceGet = v2call $ do
   return $ okResponse1 $ mkGeoFence
 
 bridgeGet :: Maybe Text -> ReaderT ServerState Handler (V2.Response V2.BridgeGet)
-bridgeGet userId = do
-  verifyUser2 userId
-  b <- snd <$> askingState mkBridge
-  return $ okResponse1 $ b
+bridgeGet = v2call $ do
+  okResponse1 . snd <$> askingState mkBridge
 
 pausedEventStream :: S.StepT IO a
 pausedEventStream = S.Effect (threadDelay 1000000 >> return pausedEventStream)
@@ -236,7 +237,7 @@ v2call k = \userId -> do
 verifyUser2 :: Maybe Text -> HueHandler ()
 verifyUser2 = \case
   Just u -> verifyUser u
-  Nothing -> throwError err300
+  Nothing -> throwError err403 -- user key not provided. Perhaps give bridge info anyway here?
 
 verifyUser :: Text -> HueHandler ()
 verifyUser userId = do
@@ -248,7 +249,7 @@ verifyUser userId = do
       return (alter (fmap (\u -> u {lastUseDate = now})) userId db
              ,userId `Map.member` db) 
   unless found $
-    throwError err300
+    throwError err401
 
 
 getBridgeConfig :: HueHandler Config

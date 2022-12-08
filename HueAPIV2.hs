@@ -25,7 +25,6 @@ import GHC.Generics
 import Servant
 import Data.Time.Clock
 import Data.Text (Text,pack,unpack,toUpper)
-import qualified Data.Text as Text
 import Types
 import HueAPI as ReExport (ColorGamutType(..)) 
 import Data.List (intercalate)
@@ -38,6 +37,7 @@ type HueApiV2
   =    "eventstream" :> "clip" :> "v2" :> AppKey :> StreamGet NewlineFraming EventStream (SourceIO SSE)
   :<|> ClipV2 ("resource" :>             Get '[JSON] (Response ResourceGet))
   :<|> ClipV2 ("resource" :> "bridge" :> Get '[JSON] (Response BridgeGet))
+  :<|> ClipV2 ("resource" :> "bridge_home" :> Get '[JSON] (Response GroupGet))
   :<|> ClipV2 ("resource" :> "geolocation" :> Get '[JSON] (Response GeoLocationGet))
   :<|> ClipV2 ("resource" :> "geofence_client" :> Get '[JSON] (Response GeoFenceGet))
   :<|> ClipV2 ("resource" :> "behavior_instance" :> Get '[JSON] (Response Null))
@@ -202,7 +202,7 @@ data GroupGet = GroupGet {
       id_v1 :: Path,
       children :: [ResourceRef],
       services :: [ResourceRef],
-      metadata :: ArchetypeMeta,
+      metadata :: Maybe ArchetypeMeta,
       _type :: ResourceType
       }
 data ArchetypeMeta = ArchetypeMeta {
