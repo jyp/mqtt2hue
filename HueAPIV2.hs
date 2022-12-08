@@ -43,6 +43,7 @@ type HueApiV2
   :<|> ClipV2 ("resource" :> "behavior_instance" :> Get '[JSON] (Response Null))
   :<|> ClipV2 ("resource" :> "entertainment_configuration" :> Get '[JSON] (Response Null))
   :<|> ClipV2 ("resource" :> "motion" :> Get '[JSON] (Response Null))
+  :<|> ClipV2 ("resource" :> "scene" :> Get '[JSON] (Response Null))
   :<|> ClipV2 ("resource" :> "zone" :> Get '[JSON] (Response GroupGet))
   :<|> ClipV2 ("resource" :> "room" :> Get '[JSON] (Response GroupGet))
   :<|> ClipV2 ("resource" :> "light" :> Get '[JSON] (Response LightGet))

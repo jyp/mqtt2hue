@@ -96,6 +96,7 @@ hueServerV2 =
   :<|> nothingGet -- entertainment_configuration
   :<|> nothingGet -- motion
   :<|> nothingGet -- zone
+  :<|> nothingGet -- scene
   :<|> roomsGet
   :<|> lightsGet
   :<|> lightPut
