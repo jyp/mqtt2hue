@@ -8,6 +8,11 @@ import Data.Text (Text)
 import Types
 import Data.Char
 
+bridgeManufacturerName :: Text
+bridgeManufacturerName = "Reliable Software inc." -- "Signify Netherlands B.V."
+
+bridgeProductName :: Text
+bridgeProductName = "MQTT2hue" -- "Philips hue"
 
 mkBridgeIdLower :: NetConfig -> Text
 mkBridgeIdLower NetConfig {..} = mac1 <> "fffe" <> mac2

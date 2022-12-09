@@ -70,9 +70,9 @@ type HueHandler = ReaderT ServerState Handler
 hueServerV1 :: ServerT HueApi HueHandler
 hueServerV1 = getDescription
          :<|> createUser
-         :<|> getBridgeConfig
+         :<|> getBridgeConfigPub
          :<|> getConfig
-         :<|> bridgeConfig
+         :<|> getBridgeConfigFull
          :<|> putConfig
          :<|> Server.getCapabilities
          :<|> getLights
@@ -213,12 +213,6 @@ description NetConfig{..} =
 hueServer :: ServerT (HueApi :<|> V2.HueApiV2) HueHandler
 hueServer = hueServerV1 :<|> hueServerV2
 
-
-bridgeConfig :: Text -> HueHandler Config
-bridgeConfig userId = do
-  verifyUser userId
-  getBridgeConfig
-
 putConfig :: Text -> Value -> HueHandler Text
 putConfig userId _ = do
   verifyUser userId
@@ -269,28 +263,39 @@ verifyUser userId = do
   liftIO $ modifyMVarMasked_ st $
     \AppState{..} -> return AppState{appRecentTime = now,..}
   liftIO $ debug Authentication ("User: " <> userId)
+
+
+getBridgeConfigPub :: HueHandler PubConfig
+getBridgeConfigPub = do
+  netCfg@NetConfig {..} <- asks netConfig
+  return PubConfig
+    {datastoreversion = "131"
+    ,name = bridgeProductName
+    ,factorynew = False
+    ,swversion = softwareVersionMinor
+    ,bridgeid = mkBridgeIdUpper netCfg
+    ,mac=Text.pack (macHexWithColon mac)}
+
   
-getBridgeConfig :: HueHandler Config
-getBridgeConfig = do
- netCfg@NetConfig {..} <- asks netConfig
+getBridgeConfigFull :: Text -> HueHandler FullConfig
+getBridgeConfigFull userId = do
+ verifyUser userId
+ NetConfig {ipaddress} <- asks netConfig
  ServerConfig {timezone,netmask,gateway} <- asks serverConfig
  but <- asks buttonPressed
  linkbutton <- liftIO (isJust <$> tryReadMVar but)
  dbVar <- asks database
  users <- liftIO $ readMVar dbVar
  now <- liftIO getCurrentTime
- return $ Config
-  {name = "MQTT2hue" -- "Philips Hue"
-  ,zigbeechannel = 15
-  ,bridgeid = mkBridgeIdUpper netCfg
+ PubConfig{..} <- getBridgeConfigPub
+ return $ FullConfig
+  {zigbeechannel = 15
   ,dhcp = True
   ,proxyaddress = "none"
   ,proxyport = 0
   ,_UTC = now
   ,localtime = now
   ,modelid = mkModelId
-  ,datastoreversion = "131"
-  ,swversion = softwareVersionMinor
   ,apiversion = apiVersion
   ,swupdate = CfgUpdate1 {updatestate = 0
                          ,checkforupdate = False
@@ -303,14 +308,14 @@ getBridgeConfig = do
                          ,notify = True
                          }
   ,swupdate2 = CfgUpdate2 {checkforupdate = False
-                           ,lastchange = now
-                           ,bridge = BridgeUpdate {state = NoUpdates
-                                                  ,lastinstall = now
-                                                  }
-                           ,state = NoUpdates
-                           ,autoinstall = AutoInstall {updatetime = TimeOfDay 3 0 0
-                                                      ,on = True }
-                           }
+                          ,lastchange = now
+                          ,bridge = BridgeUpdate {state = NoUpdates
+                                                 ,lastinstall = now
+                                                 }
+                          ,state = NoUpdates
+                          ,autoinstall = AutoInstall {updatetime = TimeOfDay 3 0 0
+                                                     ,on = True }
+                          }
   ,portalservices = True
   ,portalconnection = Connected
   ,portalstate = PortalState {signedon = True
@@ -323,7 +328,6 @@ getBridgeConfig = do
                                        ,time = Connected
                                        ,swupdate = Connected
                                        }
-  ,factorynew = False
   ,replacesbridgeid = Types.Null
   ,backup = Backup {status = HueAPI.Idle
                    ,errorcode = 0
@@ -335,7 +339,6 @@ getBridgeConfig = do
                               create_date = creationDate,
                               name = applicationIdentifier})
                         | (applicationKey,UserEntry{..}) <- Map.assocs users ]
-  ,mac=Text.pack (macHexWithColon mac)
   ,..
   }
 
@@ -443,7 +446,7 @@ putLight userId lightId action = do
 getConfig :: Text -> HueHandler Everything
 getConfig userId = do
   verifyUser userId
-  config <- getBridgeConfig
+  config <- getBridgeConfigFull userId
   e <- askingState (\st ->
       let lights = allHueLights st
           groups = allHueGroups st

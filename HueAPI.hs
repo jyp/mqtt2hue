@@ -40,9 +40,9 @@ import Types
 type HueApi =
   "description.xml" :> Get '[XML] [Node] :<|>
   "api" :> (     ReqBody '[JSON, FormUrlEncoded] CreateUser :> Post '[JSON] [CreatedUser] -- FormUrlEncoded is used in "all4hue" app.
-           :<|>                           "config" :> Get '[JSON] Config
+           :<|>                           "config" :> Get '[JSON] PubConfig
            :<|>  Capture "userid" Text :>             Get '[JSON] Everything
-           :<|>  Capture "userid" Text :> "config" :> Get '[JSON] Config
+           :<|>  Capture "userid" Text :> "config" :> Get '[JSON] FullConfig
            :<|>  Capture "userid" Text :> "config" :> ReqBody '[JSON] Value :> Put '[JSON] Text
            :<|>  Capture "userid" Text :> "capabilities" :> Get '[JSON] Value
            :<|>  Capture "userid" Text :> "lights" :> Get '[JSON] (Map Int Light)
@@ -237,7 +237,15 @@ data GroupType = Room | LightGroup
 data GroupState = GroupState { all_on, any_on :: Bool}
   deriving (Eq, Show, Generic)
 
-data Config = Config
+data PubConfig = PubConfig
+  { name :: Text,
+    datastoreversion :: Text,
+    swversion :: Text,
+    bridgeid :: Text,
+    mac :: Text,
+    factorynew :: Bool}
+
+data FullConfig = FullConfig
   { name :: Text,
     datastoreversion :: Text,
     swversion :: Text,
@@ -361,7 +369,7 @@ instance ToJSON Dummy
 data Everything = Everything
   {lights :: Map Int Light
   ,groups :: Map Int Group
-  ,config :: Config
+  ,config :: FullConfig
   ,schedules :: Map Int Dummy
   ,scenes :: Map Int Scene
   ,rules :: Map Int Dummy
@@ -380,5 +388,6 @@ instance ToJSON Capabilities
 $(myDeriveToJSON ''LightState)
 $(myDeriveToJSON ''Light)
 $(myDeriveToJSON ''Group)
-$(myDeriveToJSON ''Config)
+$(myDeriveToJSON ''FullConfig)
+$(myDeriveToJSON ''PubConfig)
 instance ToJSON Everything

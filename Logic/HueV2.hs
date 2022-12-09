@@ -36,15 +36,16 @@ mkBridge ServerConfig{timezone} AppState{configuration=cfg} = (device,bridge) wh
     {_id = devId
     ,id_v1 = ""
     ,product_data = ProductData
-      {model_id = "BSB002"
-      ,manufacturer_name = "Signify Netherlands B.V."
-      ,product_name = "Philips hue"
+      {model_id = mkModelId
+      ,manufacturer_name = bridgeManufacturerName
+      ,product_name = bridgeProductName
       ,product_archetype = BridgeV2
-      ,certified = False
+      ,certified = True
       ,software_version = mkSoftwareVersion
       ,hardware_platform_type = Nothing}
-    ,metadata = ArchetypeMeta {name = "MQTT2Hue"
-                              ,archetype = BridgeV2}
+    ,metadata = ArchetypeMeta
+      {name = bridgeProductName
+      ,archetype = BridgeV2}
     ,services = [ ResourceRef bridgeId Bridge ]
     ,_type = DeviceResource
     }
@@ -56,39 +57,6 @@ mkBridge ServerConfig{timezone} AppState{configuration=cfg} = (device,bridge) wh
       ,time_zone = TimeZone timezone
       ,_type = Bridge
       }  
-
-{-{
-      "id": "69dc4fd9-01e7-4329-ae0b-476ad339753c",
-      "id_v1": "",
-      "product_data": {
-        "model_id": "BSB002",
-        "manufacturer_name": "Signify Netherlands B.V.",
-        "product_name": "Philips hue",
-        "product_archetype": "bridge_v2",
-        "certified": true,
-        "software_version": "1.53.1953188020"
-      },
-      "metadata": {
-        "name": "Philips hue",
-        "archetype": "bridge_v2"
-      },
-      "identify": {},
-      "services": [
-        {
-          "rid": "1546cfb2-70a3-4b6c-a233-9ac38c7d4980",
-          "rtype": "bridge"
-        },
-        {
-          "rid": "047aeeaf-8b88-4c78-893f-73babfa3f1af",
-          "rtype": "zigbee_connectivity"
-        },
-        {
-          "rid": "e996e8b7-854f-4fee-a879-37f161e0bbd0",
-          "rtype": "entertainment"
-        }
-      ],
-      "type": "device"
-    }-}
 
 mkDeviceRef :: IEEEAddress -> ResourceRef
 mkDeviceRef addr = ResourceRef (hashableToId addr) DeviceResource
@@ -105,7 +73,7 @@ mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
     { _id = deviceId
     , id_v1 = "/light/" <> pack (show v1Id) 
     , product_data = ProductData
-      { certified = False
+      { certified = True
       , software_version = sw_version
       , hardware_platform_type = Nothing -- "1166-116" -- Innr, FIXME
       , model_id = fromMaybe "ABC123" model_id
