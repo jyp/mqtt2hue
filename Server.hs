@@ -312,8 +312,8 @@ getBridgeConfig = do
                                                       ,on = True }
                            }
   ,portalservices = True
-  ,portalconnection = Disconnected
-  ,portalstate = PortalState {signedon = False
+  ,portalconnection = Connected
+  ,portalstate = PortalState {signedon = True
                              ,incoming = False
                              ,outgoing = False
                              ,communication = Disconnected
@@ -321,7 +321,7 @@ getBridgeConfig = do
   ,internetservices = InternetServices {internet = Connected
                                        ,remoteaccess = Connected
                                        ,time = Connected
-                                       ,swupdate = Disconnected
+                                       ,swupdate = Connected
                                        }
   ,factorynew = False
   ,replacesbridgeid = Types.Null
