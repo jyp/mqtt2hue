@@ -6771,6 +6771,7 @@
   
 * Events
 
+curl --insecure -N -H 'hue-application-key: MOnR-DdEU4iuryG4BpiZhhB94uNovMMM4eK0ASHU' https://192.168.1.19/eventstream/clip/v2/
 curl --insecure -N -H 'hue-application-key: 345abd2b4d0160e8d5384d837465712e' -H 'Accept: text/event-stream' https://192.168.19.20/eventstream/clip/v2
 
 #+begin_src javascript

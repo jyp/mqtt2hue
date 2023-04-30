@@ -2,6 +2,205 @@
 
 ecb5fafffe259801
 
+* V1
+
+{
+  "config": {
+    "UTC": "2022-12-08T18:53:37.726638185Z",
+    "apiversion": "1.53.0",
+    "backup": {
+      "errorcode": 0,
+      "status": []
+    },
+    "bridgeid": "9061aeFFFE218f6d",
+    "datastoreversion": "131",
+    "dhcp": true,
+    "factorynew": false,
+    "gateway": "192.168.1.1",
+    "internetservices": {
+      "internet": "connected",
+      "remoteaccess": "connected",
+      "swupdate": "disconnected",
+      "time": "connected"
+    },
+    "ipaddress": "192.168.1.20",
+    "linkbutton": false,
+    "localtime": "2022-12-08T18:53:37.726638185Z",
+    "mac": "9061ae218f6d",
+    "modelid": "BSB002",
+    "name": "MQTT2hue",
+    "netmask": "255.255.255.0",
+    "portalconnection": "disconnected",
+    "portalservices": true,
+    "portalstate": {
+      "communication": "disconnected",
+      "incoming": false,
+      "outgoing": false,
+      "signedon": false
+    },
+    "proxyaddress": "none",
+    "proxyport": 0,
+    "replacesbridgeid": null,
+    "starterkitid": "",
+    "swupdate": {
+      "checkforupdate": false,
+      "devicetypes": {
+        "bridge": false,
+        "lights": [],
+        "sensors": []
+      },
+      "notify": true,
+      "text": "",
+      "updatestate": 0,
+      "url": ""
+    },
+    "swupdate2": {
+      "autoinstall": {
+        "on": true,
+        "updatetime": "03:00:00"
+      },
+      "bridge": {
+        "lastinstall": "2022-12-08T18:53:37.726638185Z",
+        "state": "noupdates"
+      },
+      "checkforupdate": false,
+      "lastchange": "2022-12-08T18:53:37.726638185Z",
+      "state": "noupdates"
+    },
+    "swversion": "1953188020",
+    "timezone": "Europe/Stockholm",
+    "whitelist": {
+      "06c08762c10b39be19fffec7adac264c": {
+        "create date": "2022-12-08T18:53:33.895836142Z",
+        "last use date": "2022-12-08T18:53:37.72660608Z",
+        "name": "Hue#moto x4"
+      },
+      "592f873489e9cbecad411792fa5f11a4": {
+        "create date": "2022-12-08T17:48:18.912270864Z",
+        "last use date": "2022-12-08T17:48:19.37118151Z",
+        "name": "gnome-hue-lights#neptune"
+      },
+      "95c06e3b6820c27d6e98c7138bb917f0": {
+        "create date": "2022-12-08T09:45:34.095257349Z",
+        "last use date": "2022-12-08T18:40:17.523833274Z",
+        "name": "all 4 hue#moto x4"
+      }
+    },
+    "zigbeechannel": 15
+  },
+  "groups": {
+    "1": {
+      "action": {
+        "alert": "select",
+        "bri": 1,
+        "colormode": "ct",
+        "ct": 396,
+        "effect": [],
+        "mode": "homeautomation",
+        "on": false,
+        "reachable": true,
+        "xy": [
+          0.4752,
+          0.4134
+        ]
+      },
+      "class": "Living room",
+      "lights": [
+        "1"
+      ],
+      "name": "Living Room Upstairs",
+      "recycle": false,
+      "sensors": [],
+      "state": {
+        "all_on": false,
+        "any_on": false
+      },
+      "type": "Room"
+    }
+  },
+  "lights": {
+    "1": {
+      "capabilities": {
+        "certified": false,
+        "control": {
+          "colorgamuttype": "other",
+          "tag": "fullcolor"
+        }
+      },
+      "config": {
+        "archetype": "sultanbulb",
+        "direction": "omnidirectional",
+        "function": "functional",
+        "startup": {
+          "configured": true,
+          "mode": "safety"
+        }
+      },
+      "manufacturername": "Philips",
+      "modelid": "Hue white and color ambiance LightStrip plus (8718699703424)",
+      "name": "TV Backlight",
+      "productname": "TV Backlight",
+      "state": {
+        "alert": "select",
+        "bri": 1,
+        "colormode": "ct",
+        "ct": 396,
+        "effect": [],
+        "hue": 30,
+        "mode": "homeautomation",
+        "on": false,
+        "reachable": true,
+        "sat": 86,
+        "xy": [
+          0.4752,
+          0.4134
+        ]
+      },
+      "swupdate": {
+        "lastinstall": "2022-12-08T18:53:37.72660608Z",
+        "state": "noupdates"
+      },
+      "swversion": "1.93.11",
+      "type": "Extended color light",
+      "uniqueid": "0x001788010bf4769e_light_zigbee2mqtt"
+    }
+  },
+  "resoucelinks": {},
+  "rules": {},
+  "scenes": {
+    "1": {
+      "group": "1",
+      "lastupdated": "2022-12-08T18:53:37.72660608Z",
+      "lights": [
+        "1"
+      ],
+      "locked": true,
+      "name": "Test Scene",
+      "owner": "1",
+      "picture": "",
+      "recycle": true,
+      "type": "GroupScene",
+      "version": 2
+    },
+    "2": {
+      "group": "1",
+      "lastupdated": "2022-12-08T18:53:37.72660608Z",
+      "lights": [
+        "1"
+      ],
+      "locked": true,
+      "name": "Evening",
+      "owner": "1",
+      "picture": "",
+      "recycle": true,
+      "type": "GroupScene",
+      "version": 2
+    }
+  },
+  "schedules": {},
+  "sensors": {}
+}
+
 * V2
 
 ** Certificate verification
@@ -246,3 +445,282 @@ curl --insecure -H 'hue-application-key: MOnR-DdEU4iuryG4BpiZhhB94uNovMMM4eK0ASH
 #+RESULTS:
 : {"errors":[],"data":[{"id":"a87e0c79-8d8b-4c70-9e1f-e50977f84ca7","is_configured":true,"type":"geolocation"}]}
 
+
+
+** V2 lights
+
+#+begin_src shell :results verbatim
+curl --insecure -H 'hue-application-key: 592f873489e9cbecad411792fa5f11a4' https://192.168.1.20/clip/v2/resource/light
+#+end_src
+
+#+RESULTS:
+: {"data":[{"dimming":{"brightness":0.39370078,"min_dim_level":null},"color_temperature":{"mirek":396,"mirek_schema":{"mirek_maximum":500,"mirek_minimum":150},"mirek_valid":true},"color":{"gamut":null,"gamut_type":null,"xy":{"x":0.4752,"y":0.4134}},"id":"67dfc0fd-0c82-be2f-0017-88010bf4769e","id_v1":"/light/1","owner":{"rid":"604e95fc-4245-f6e6-6bba-7acafad0d551","rtype":"device"},"metadata":{"archetype":"sultan_bulb","name":"TV Backlight"},"on":{"on":false},"dynamics":{"speed":0,"speed_valid":false,"status":"none","status_values":["none"]},"alert":{"action_values":["breathe"]},"mode":"normal","type":"light"},{"dimming":{"brightness":0.39370078,"min_dim_level":null},"color_temperature":{"mirek":396,"mirek_schema":{"mirek_maximum":500,"mirek_minimum":150},"mirek_valid":true},"color":{"gamut":null,"gamut_type":null,"xy":{"x":0.4752,"y":0.4134}},"id":"4a22c5cd-7eba-c711-c5de-14d59d240001","id_v1":"/groups/1","owner":{"rid":"702e1043-68c5-7c03-c3ab-3ecdb02a3b8d","rtype":"room"},"metadata":{"archetype":"sultan_bulb","name":"Living Room Upstairs"},"on":{"on":false},"dynamics":{"speed":0,"speed_valid":false,"status":"none","status_values":["none"]},"alert":{"action_values":["breathe"]},"mode":"normal","type":"light"},{"dimming":{"brightness":0.39370078,"min_dim_level":null},"color_temperature":{"mirek":396,"mirek_schema":{"mirek_maximum":500,"mirek_minimum":150},"mirek_valid":true},"color":{"gamut":null,"gamut_type":null,"xy":{"x":0.4752,"y":0.4134}},"id":"bf911f2b-583c-b693-0d12-9be05eea0000","id_v1":"/groups/0","owner":{"rid":"6ad65062-0be7-1187-ac85-0f4093d76f54","rtype":"bridge_home"},"metadata":{"archetype":"sultan_bulb","name":"# Home group #"},"on":{"on":false},"dynamics":{"speed":0,"speed_valid":false,"status":"none","status_values":["none"]},"alert":{"action_values":["breathe"]},"mode":"normal","type":"light"}],"errors":[]}
+
+
+** V2 devices
+
+#+begin_src shell :results verbatim
+curl --insecure -H 'hue-application-key: 592f873489e9cbecad411792fa5f11a4' https://192.168.1.20/clip/v2/resource
+#+end_src
+
+#+begin_src js
+ {
+  "data": [
+    {
+      "id": "f3ce816f-70b6-6f92-9568-0f6fc942bf86",
+      "id_v1": "",
+      "metadata": {
+        "archetype": "bridge_v2",
+        "name": "MQTT2Hue"
+      },
+      "product_data": {
+        "certified": false,
+        "hardware_platform_type": null,
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "model_id": "BSB002",
+        "product_archetype": "bridge_v2",
+        "product_name": "Philips hue",
+        "software_version": "1.53.1953188020"
+      },
+      "services": [
+        {
+          "rid": "36759568-69a8-7463-4c80-8c5fd55da168",
+          "rtype": "bridge"
+        }
+      ],
+      "type": "device"
+    },
+    {
+      "bridge_id": "9061aefffe218f6d",
+      "id": "36759568-69a8-7463-4c80-8c5fd55da168",
+      "id_v1": "",
+      "owner": {
+        "rid": "f3ce816f-70b6-6f92-9568-0f6fc942bf86",
+        "rtype": "device"
+      },
+      "time_zone": {
+        "time_zone": "Europe/Stockholm"
+      },
+      "type": "bridge"
+    },
+    {
+      "id": "604e95fc-4245-f6e6-6bba-7acafad0d551",
+      "id_v1": "/light/1",
+      "metadata": {
+        "archetype": "sultan_bulb",
+        "name": "TV Backlight"
+      },
+      "product_data": {
+        "certified": false,
+        "hardware_platform_type": null,
+        "manufacturer_name": "Philips",
+        "model_id": "LCL001",
+        "product_archetype": "classic_bulb",
+        "product_name": "TV Backlight",
+        "software_version": "1.93.11"
+      },
+      "services": [
+        {
+          "rid": "67dfc0fd-0c82-be2f-0017-88010bf4769e",
+          "rtype": "light"
+        }
+      ],
+      "type": "device"
+    },
+    {
+      "alert": {
+        "action_values": [
+          "breathe"
+        ]
+      },
+      "color": {
+        "gamut": null,
+        "gamut_type": null,
+        "xy": {
+          "x": 0.4752,
+          "y": 0.4134
+        }
+      },
+      "color_temperature": {
+        "mirek": 396,
+        "mirek_schema": {
+          "mirek_maximum": 500,
+          "mirek_minimum": 150
+        },
+        "mirek_valid": true
+      },
+      "dimming": {
+        "brightness": 0.39370078,
+        "min_dim_level": null
+      },
+      "dynamics": {
+        "speed": 0,
+        "speed_valid": false,
+        "status": "none",
+        "status_values": [
+          "none"
+        ]
+      },
+      "id": "67dfc0fd-0c82-be2f-0017-88010bf4769e",
+      "id_v1": "/light/1",
+      "metadata": {
+        "archetype": "sultan_bulb",
+        "name": "TV Backlight"
+      },
+      "mode": "normal",
+      "on": {
+        "on": false
+      },
+      "owner": {
+        "rid": "604e95fc-4245-f6e6-6bba-7acafad0d551",
+        "rtype": "device"
+      },
+      "type": "light"
+    },
+    {
+      "children": [
+        {
+          "rid": "604e95fc-4245-f6e6-6bba-7acafad0d551",
+          "rtype": "device"
+        }
+      ],
+      "id": "702e1043-68c5-7c03-c3ab-3ecdb02a3b8d",
+      "id_v1": "/groups/1",
+      "metadata": {
+        "archetype": "living_room",
+        "name": "Living Room Upstairs"
+      },
+      "services": [
+        {
+          "rid": "4a22c5cd-7eba-c711-c5de-14d59d240001",
+          "rtype": "grouped_light"
+        }
+      ],
+      "type": "room"
+    },
+    {
+      "alert": {
+        "action_values": [
+          "breathe"
+        ]
+      },
+      "color": {
+        "gamut": null,
+        "gamut_type": null,
+        "xy": {
+          "x": 0.4752,
+          "y": 0.4134
+        }
+      },
+      "color_temperature": {
+        "mirek": 396,
+        "mirek_schema": {
+          "mirek_maximum": 500,
+          "mirek_minimum": 150
+        },
+        "mirek_valid": true
+      },
+      "dimming": {
+        "brightness": 0.39370078,
+        "min_dim_level": null
+      },
+      "dynamics": {
+        "speed": 0,
+        "speed_valid": false,
+        "status": "none",
+        "status_values": [
+          "none"
+        ]
+      },
+      "id": "4a22c5cd-7eba-c711-c5de-14d59d240001",
+      "id_v1": "/groups/1",
+      "metadata": {
+        "archetype": "sultan_bulb",
+        "name": "Living Room Upstairs"
+      },
+      "mode": "normal",
+      "on": {
+        "on": false
+      },
+      "owner": {
+        "rid": "702e1043-68c5-7c03-c3ab-3ecdb02a3b8d",
+        "rtype": "room"
+      },
+      "type": "light"
+    },
+    {
+      "id": "dbbc30a8-384e-4d61-e15e-b8c5bc97be00",
+      "is_configured": false,
+      "type": "geolocation"
+    },
+    {
+      "children": [
+        {
+          "rid": "604e95fc-4245-f6e6-6bba-7acafad0d551",
+          "rtype": "device"
+        }
+      ],
+      "id": "6ad65062-0be7-1187-ac85-0f4093d76f54",
+      "id_v1": "/groups/0",
+      "services": [
+        {
+          "rid": "bf911f2b-583c-b693-0d12-9be05eea0000",
+          "rtype": "grouped_light"
+        }
+      ],
+      "type": "bridge_home"
+    },
+    {
+      "alert": {
+        "action_values": [
+          "breathe"
+        ]
+      },
+      "color": {
+        "gamut": null,
+        "gamut_type": null,
+        "xy": {
+          "x": 0.4752,
+          "y": 0.4134
+        }
+      },
+      "color_temperature": {
+        "mirek": 396,
+        "mirek_schema": {
+          "mirek_maximum": 500,
+          "mirek_minimum": 150
+        },
+        "mirek_valid": true
+      },
+      "dimming": {
+        "brightness": 0.39370078,
+        "min_dim_level": null
+      },
+      "dynamics": {
+        "speed": 0,
+        "speed_valid": false,
+        "status": "none",
+        "status_values": [
+          "none"
+        ]
+      },
+      "id": "bf911f2b-583c-b693-0d12-9be05eea0000",
+      "id_v1": "/groups/0",
+      "metadata": {
+        "archetype": "sultan_bulb",
+        "name": "# Home group #"
+      },
+      "mode": "normal",
+      "on": {
+        "on": false
+      },
+      "owner": {
+        "rid": "6ad65062-0be7-1187-ac85-0f4093d76f54",
+        "rtype": "bridge_home"
+      },
+      "type": "light"
+    }
+  ],
+  "errors": []
+}
+#+end_src

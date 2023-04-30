@@ -1,6 +1,24 @@
 # mqtt2hue
 Provide hue hub functionality for devices available via MQTT.
 
+- Run:
+
+  mqtt2hue config.yaml +RTS -threaded
+
+
+- Config file:
+
+#+begin_src yaml
+netInterface: wlp3s0
+usersFilePath: /var/lib/mqtt2hue/users.yaml
+mqttBroker: mqtt://<user>:<pwd>@<ip>
+netmask: 255.255.255.0
+gateway: 192.168.1.1
+certificatePath: cert2
+timezone: Europe/Stockholm
+#+end_src
+
+
 - Open ports: 80, 443, 1900 (SSDP)
 
 - Avahi service registration. In nixos:
