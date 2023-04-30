@@ -19,7 +19,7 @@ mkBridgeIdLower NetConfig {..} = mac1 <> "fffe" <> mac2
  where (mac1,mac2) = Text.splitAt 6 (Text.pack (macHex mac))
 
 mkBridgeIdUpper :: NetConfig -> Text
-mkBridgeIdUpper = Text.map toUpper .  mkBridgeIdUpper
+mkBridgeIdUpper = Text.map toUpper .  mkBridgeIdLower
 
 -- BSB001 is Hue bridge 1st gen
 -- BSB002 is Hue bridge 2st gen
