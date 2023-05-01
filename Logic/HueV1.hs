@@ -95,8 +95,8 @@ lightMqtt2Hue now (MQTT.LightConfig {device = Device {name=productname,..},..}) 
           ,swupdate = SwUpdate {state = NoUpdates
                                ,lastinstall = now
                                }
-          ,_type = if XYMode `elem` supported_color_modes then
-                     ExtendedColorLight else (if TemperatureMode `elem` supported_color_modes
+          ,_type = if XYMode `elem` cmodes then
+                     ExtendedColorLight else (if TemperatureMode `elem` cmodes
                                               then TemperatureLight
                                               else DimmableLight)
           ,name = name
@@ -105,9 +105,9 @@ lightMqtt2Hue now (MQTT.LightConfig {device = Device {name=productname,..},..}) 
           ,productname = productname
           ,capabilities = Capabilities
             {certified = False,
-             control = if XYMode `elem` supported_color_modes then
+             control = if XYMode `elem` cmodes then
                      FullColor Other Nothing -- FIXME: Get gamut from manufacturer+modelid
-                       else (if TemperatureMode `elem` supported_color_modes
+                       else (if TemperatureMode `elem` cmodes
                               then case (min_mireds,max_mireds) of
                                      (Just mmin, Just mmax) -> Ct (CtValues mmin mmax)
                                      _ -> NoControl
@@ -120,6 +120,7 @@ lightMqtt2Hue now (MQTT.LightConfig {device = Device {name=productname,..},..}) 
           ,uniqueid = unique_id
           ,swversion = sw_version
           }
+    where cmodes = fromMaybe [] supported_color_modes
 
 allHueLights :: AppState -> Map Int Light
 allHueLights st@AppState{..} = lightsMqtt2Hue st (Map.elems lights)

@@ -175,18 +175,18 @@ data Device = Device {
 data LightConfig = LightConfig {
           brightness :: Bool,
           brightness_scale :: Maybe Int,
-          color_mode :: Bool,
+          color_mode :: Maybe Bool, -- Nothing for simple brightness lights
           command_topic :: Text,
           device :: Device,
-          effect :: Bool,
-          effect_list :: [Text],
+          effect :: Maybe Bool, -- Nothing for simple brightness lights-
+          effect_list :: Maybe [Text],
           json_attributes_topic :: Text,
           max_mireds :: Maybe Int,
           min_mireds :: Maybe Int,
           name :: Text,
           -- schema :: Text, -- always json
           state_topic :: Text,
-          supported_color_modes :: [ColorMode],
+          supported_color_modes :: Maybe [ColorMode],
           unique_id :: Text
         } deriving (Generic, Show)
   
@@ -228,10 +228,16 @@ test0 = decode "[{\"friendly_name\":\"Living Room Upstairs\",\"id\":1,\"members\
 -- >>> test0
 -- Just [GroupConfig {_id = 1, friendly_name = "Living Room Upstairs", scenes = [], members = [GroupMember {ieee_address = 0x001788010bf4769e, endpoint = Opt1 11}]}]
 
-test1 :: Maybe LightConfig
-test1 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"brightness\":true,\"brightness_scale\":254,\"color_mode\":true,\"command_topic\":\"zigbee2mqtt/Led Strip TV/set\",\"device\":{\"identifiers\":[\"zigbee2mqtt_0x001788010bf4769e\"],\"manufacturer\":\"Philips\",\"model\":\"Hue white and color ambiance LightStrip plus (8718699703424)\",\"name\":\"Led Strip TV\",\"sw_version\":\"1.93.11\"},\"effect\":true,\"effect_list\":[\"blink\",\"breathe\",\"okay\",\"channel_change\",\"finish_effect\",\"stop_effect\"],\"json_attributes_topic\":\"zigbee2mqtt/Led Strip TV\",\"min_mireds\":150,\"name\":\"Led Strip TV\",\"schema\":\"json\",\"state_topic\":\"zigbee2mqtt/Led Strip TV\",\"supported_color_modes\":[\"xy\",\"color_temp\"],\"unique_id\":\"0x001788010bf4769e_light_zigbee2mqtt\"}"
+testLight2 :: Maybe LightConfig
+testLight2 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"brightness\":true,\"brightness_scale\":254,\"command_topic\":\"zigbee2mqtt/Master Bedroom Relay/set\",\"device\":{\"identifiers\":[\"zigbee2mqtt_0x9035eafffe93058f\"],\"manufacturer\":\"Vesternet\",\"model\":\"Zigbee dimmer (VES-ZB-DIM-004)\",\"name\":\"Master Bedroom Relay\",\"sw_version\":\"2.5.3_r52\"},\"json_attributes_topic\":\"zigbee2mqtt/Master Bedroom Relay\",\"name\":\"Master Bedroom Relay\",\"schema\":\"json\",\"state_topic\":\"zigbee2mqtt/Master Bedroom Relay\",\"unique_id\":\"0x9035eafffe93058f_light_zigbee2mqtt\"}"
 
--- >>> test1
+-- >>> testLight2
+-- Just (LightConfig {brightness = True, brightness_scale = Just 254, color_mode = Nothing, command_topic = "zigbee2mqtt/Master Bedroom Relay/set", device = Device {identifiers = ["zigbee2mqtt_0x9035eafffe93058f"], manufacturer = "Vesternet", model = "Zigbee dimmer (VES-ZB-DIM-004)", name = "Master Bedroom Relay", sw_version = "2.5.3_r52"}, effect = Nothing, effect_list = Nothing, json_attributes_topic = "zigbee2mqtt/Master Bedroom Relay", max_mireds = Nothing, min_mireds = Nothing, name = "Master Bedroom Relay", state_topic = "zigbee2mqtt/Master Bedroom Relay", supported_color_modes = Nothing, unique_id = "0x9035eafffe93058f_light_zigbee2mqtt"})
+
+testLight1 :: Maybe LightConfig
+testLight1 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"brightness\":true,\"brightness_scale\":254,\"color_mode\":true,\"command_topic\":\"zigbee2mqtt/Led Strip TV/set\",\"device\":{\"identifiers\":[\"zigbee2mqtt_0x001788010bf4769e\"],\"manufacturer\":\"Philips\",\"model\":\"Hue white and color ambiance LightStrip plus (8718699703424)\",\"name\":\"Led Strip TV\",\"sw_version\":\"1.93.11\"},\"effect\":true,\"effect_list\":[\"blink\",\"breathe\",\"okay\",\"channel_change\",\"finish_effect\",\"stop_effect\"],\"json_attributes_topic\":\"zigbee2mqtt/Led Strip TV\",\"min_mireds\":150,\"name\":\"Led Strip TV\",\"schema\":\"json\",\"state_topic\":\"zigbee2mqtt/Led Strip TV\",\"supported_color_modes\":[\"xy\",\"color_temp\"],\"unique_id\":\"0x001788010bf4769e_light_zigbee2mqtt\"}"
+
+-- >>> testLight1
 -- Just (LightConfig {brightness = True, brightness_scale = Just 254, color_mode = True, command_topic = "zigbee2mqtt/Led Strip TV/set", device = Device {manufacturer = "Philips"}, effect = True, effect_list = ["blink","breathe","okay","channel_change","finish_effect","stop_effect"], json_attributes_topic = "zigbee2mqtt/Led Strip TV", max_mireds = Nothing, min_mireds = Just 150, name = "Led Strip TV", state_topic = "zigbee2mqtt/Led Strip TV", supported_color_modes = [XYMode,TemperatureMode], unique_id = "0x001788010bf4769e_light_zigbee2mqtt"})
 
 -- >>> decodeTestFile "examples/MQTT/devices.json" :: IO (Maybe [ZigDevice])
@@ -239,3 +245,4 @@ test1 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"b
 
 -- >>> decodeTestFile "examples/MQTT/btnState.json" :: IO (Maybe SwitchState)
 -- Just (SwitchState {action = BtnAction OnBtn Press})
+

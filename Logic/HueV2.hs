@@ -17,7 +17,6 @@ import Data.Maybe
 import MQTTAPI as MQTT
 import HueAPIV2
 import qualified Data.Map as Map
-import Data.Map (Map,toList)
 import Data.Text (Text,pack,isInfixOf,toCaseFold)
 import Logic.Common
 import Types
@@ -64,7 +63,7 @@ mkDeviceRef addr = ResourceRef (hashableToId addr) DeviceResource
 
 mkLight :: Int -> ZigDevice -> LightConfig -> LightState -> (DeviceGet, LightGet)
 mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
-        l@LightConfig{unique_id,device,supported_color_modes,max_mireds,min_mireds} ls =
+        LightConfig{unique_id,device,supported_color_modes,max_mireds,min_mireds} ls =
   (mkLightDevice zdev device, svc) where
   serviceId = identStoreAddr (hashableToId unique_id) ieee_address
   deviceRef@ResourceRef{rid = deviceId} = mkDeviceRef ieee_address
@@ -90,7 +89,7 @@ mkLight v1Id zdev@ZigDevice{ieee_address,friendly_name}
     }
   path = "/light/" <> pack (show v1Id)
   svc = mkLightService friendly_name serviceId path deviceRef
-                       (supported_color_modes,min_mireds,max_mireds) ls
+                       (fromMaybe [] supported_color_modes,min_mireds,max_mireds) ls
 
 mkLightService :: Text
                -> Identifier
@@ -160,7 +159,7 @@ mkGroup gid friendly_name rtype lightCfgs lAddrs groupLightState metadata = (grp
   roomRef = ResourceRef roomId rtype
   id_v1 = "/groups/" <> pack (show gid)
   light = mkLightService friendly_name groupedLightId id_v1 roomRef (cmode,mmin,mmax) groupLightState
-  cmode = nub $ concat (supported_color_modes <$> lightCfgs)
+  cmode = nub $ concat (fromMaybe [] . supported_color_modes <$> lightCfgs)
   mmin = case catMaybes (min_mireds <$> lightCfgs) of
     [] -> Nothing
     xs -> Just (maximum xs)

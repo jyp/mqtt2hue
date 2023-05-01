@@ -3,7 +3,7 @@ Provide hue hub functionality for devices available via MQTT.
 
 - Run:
 
-  mqtt2hue config.yaml +RTS -threaded
+  mqtt2hue config.yaml
 
 
 - Config file:

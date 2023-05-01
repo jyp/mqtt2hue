@@ -116,8 +116,9 @@ getLightState AppState{..} cfg
 -- | Invent some colors if the light supports them but we did not get
 -- them from the state yet. (otherwise Gnome app won't see that it
 -- does in fact support them) (???)
-enrichLightState :: [MQTTAPI.ColorMode] -> MQTTAPI.LightState -> MQTTAPI.LightState
-enrichLightState cmodes ls@MQTTAPI.LightState{color,color_temp} =
+enrichLightState :: Maybe [MQTTAPI.ColorMode] -> MQTTAPI.LightState -> MQTTAPI.LightState
+enrichLightState Nothing ls = ls
+enrichLightState (Just cmodes) ls@MQTTAPI.LightState{color,color_temp} =
   ls {color =
          if XYMode `elem` cmodes && isNothing color
          then Just (ColorXY 0.4 0.4 Nothing Nothing)
