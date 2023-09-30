@@ -2,7 +2,7 @@ Cabal-Version:  3.0
 name:           mqtt2hue
 version:        1.0
 category:       automation
-synopsis:       Whatever
+synopsis:       Hue bridge emulator for Zigbee2MQTT system
 description:
   Soon to appear.
 license-file:   LICENSE

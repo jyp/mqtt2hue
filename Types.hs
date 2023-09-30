@@ -28,6 +28,7 @@ data ServerConfig = ServerConfig { netInterface :: String,
                                    usersFilePath :: String,
                                    mqttBroker :: String,
                                    certificatePath :: String,
+                                   httpPort, httpsPort :: Int,
                                    timezone,
                                    netmask,
                                    gateway :: Text } deriving Generic

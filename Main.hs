@@ -76,6 +76,6 @@ configured cfg@ServerConfig{certificatePath} itf = do
   withStdoutLogger $ \aplogger -> do
     let tlsOpts = tlsSettings (certificatePath <> "/cert.pem") (certificatePath <> "/privkey.pem")
         warpOpts = setLogger aplogger $ defaultSettings
-    _ <- forkIO $ runSettings (setPort 80 warpOpts) app
-    runTLS tlsOpts (setPort 443 $ warpOpts) app
+    _ <- forkIO $ runSettings (setPort (httpPort cfg) warpOpts) app
+    runTLS tlsOpts (setPort (httpsPort cfg) $ warpOpts) app
   return ()
