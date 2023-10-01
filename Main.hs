@@ -26,6 +26,8 @@ import System.Environment
 import SSDP
 import Network.Info
 import Network.Wai.Middleware.RequestLogger (logStdoutDev)
+import System.Directory (doesFileExist)
+import qualified System.IO
 
 -- >>> getNetworkInterfaces
 -- [NetworkInterface {name = "lo", ipv4 = 127.0.0.1, ipv6 = 0:0:0:0:0:0:0:1, mac = 00:00:00:00:00:00},NetworkInterface {name = "enp2s0", ipv4 = 0.0.0.0, ipv6 = 0:0:0:0:0:0:0:0, mac = 30:9c:23:45:56:bc},NetworkInterface {name = "wlp3s0", ipv4 = 192.168.1.20, ipv6 = fe80:0:0:0:a576:416d:17d1:8d22, mac = 90:61:ae:21:8f:6d}]
@@ -47,7 +49,7 @@ configured cfg@ServerConfig{certificatePath} itf = do
   mv <- newEmptyMVar
   button <- newEmptyMVar
   semas <- newMVar mempty
-
+  
   let hueService = SSDPService {
         ssOSName         = "Hue/1.0",
         ssInterface      = itf,
@@ -58,16 +60,22 @@ configured cfg@ServerConfig{certificatePath} itf = do
         ssServiceItems   = ["urn:schemas-upnp-org:device:basic:1"]
         }
   ssdpHandle <- startSsdpServer hueService
-                   
+                  
   let netCfg =
         NetConfig {
         ipaddress=pack (show ipv4),
         ..} where ServerConfig{..} = cfg; NetworkInterface{..}=itf
-
+  
   st <- newMVar (blankAppState netCfg)
-
+  
   Text.putStrLn "Loading user file"
-  db <- newMVar =<< decodeFileThrow (usersFilePath cfg) 
+  db <- newMVar =<< do
+    e <- doesFileExist (usersFilePath cfg)
+    if e
+      then decodeFileThrow (usersFilePath cfg)
+      else do
+        System.IO.putStrLn ("No user db. Creating at " ++ usersFilePath cfg)
+        return mempty
   Text.putStrLn "Loaded"
   let s = ServerState cfg netCfg st mv db button semas
   _ <- forkIO (mqttThread s)
