@@ -86,6 +86,7 @@ in {
         Group = "mqtt2hue";
         DynamicUser = true;
         StateDirectory = "mqtt2hue";
+        AmbientCapabilities = "cap_net_bind_service"; # allow binding 80 and 443
         WorkingDirectory = homeDir;
         Restart = "on-failure";
       };
