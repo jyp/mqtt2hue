@@ -99,9 +99,9 @@ lightMqtt2Hue now (MQTT.LightConfig {device = Device {name,model,..},..}) zigDev
                                               then TemperatureLight
                                               else DimmableLight)
           ,name = name
-          ,modelid = model -- FIXME get from topic zigbee2mqtt/bridge/devices, field model_id in the relevant element in the list. Identified by friendly_name or ieee_address
+          ,modelid = maybe "Unknown Model" id (model_id =<< zigDev)
           ,manufacturername = manufacturer
-          ,productname = model -- maybe "Unknown Product" id (model_id =<< zigDev)
+          ,productname = model
           ,capabilities = Capabilities
             {certified = False,
              control = if XYMode `elem` cmodes then
