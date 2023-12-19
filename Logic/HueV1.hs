@@ -21,7 +21,6 @@ import HueAPI
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Text (Text,unpack,pack,isInfixOf,toCaseFold)
-import Data.Time.Clock
 import Text.Read (readMaybe)
 import MyAeson(Choice(..))
 import Logic.Common
@@ -89,8 +88,8 @@ lightStateMqtt2Hue MQTT.LightState {brightness,color_temp,state,color_mode,color
                       ,reachable = True -- FIXME -- linkquality ?
                       }
 
-lightMqtt2Hue :: TimeStamp -> MQTT.LightConfig -> HueAPI.LightState -> HueAPI.Light
-lightMqtt2Hue now (MQTT.LightConfig {device = Device {name=productname,..},..}) lightState
+lightMqtt2Hue :: TimeStamp -> MQTT.LightConfig -> Maybe MQTT.ZigDevice -> HueAPI.LightState -> HueAPI.Light
+lightMqtt2Hue now (MQTT.LightConfig {device = Device {name,model,..},..}) zigDev lightState
   = Light {state = lightState 
           ,swupdate = SwUpdate {state = NoUpdates
                                ,lastinstall = now
@@ -102,7 +101,7 @@ lightMqtt2Hue now (MQTT.LightConfig {device = Device {name=productname,..},..}) 
           ,name = name
           ,modelid = model -- FIXME get from topic zigbee2mqtt/bridge/devices, field model_id in the relevant element in the list. Identified by friendly_name or ieee_address
           ,manufacturername = manufacturer
-          ,productname = productname
+          ,productname = model -- maybe "Unknown Product" id (model_id =<< zigDev)
           ,capabilities = Capabilities
             {certified = False,
              control = if XYMode `elem` cmodes then
@@ -127,10 +126,11 @@ allHueLights st@AppState{..} = lightsMqtt2Hue st (Map.elems lights)
 
 lightsMqtt2Hue :: AppState -> [MQTT.LightConfig] -> Map Int Light
 lightsMqtt2Hue st@AppState{..} ls
-  = Map.fromList [(i,lightMqtt2Hue appRecentTime l
+  = Map.fromList [(i,lightMqtt2Hue appRecentTime l z
                      (lightStateMqtt2Hue (getLightState st l)))
                  | l <- ls
-                 , let Just i = Map.lookup (lightAddress l) lightIds]
+                 , let Just i = Map.lookup (lightAddress l) lightIds
+                       z = Map.lookup (lightAddress l) zigDevices]
 
 mkGroupWithLights :: AppState -> GroupType -> Text -> Map IEEEAddress MQTT.LightConfig -> Group
 mkGroupWithLights st@AppState{..} _type name ls

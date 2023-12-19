@@ -1,0 +1,90 @@
+* Hue API
+  - discovery
+    - https://www.burgestrand.se/hue-api/api/discovery/
+    - SSDP
+      - https://hackage.haskell.org/package/hoovie-0.1.1/src/src/Hoovie/SSDP.hs
+  - https://developers.meethue.com/develop/hue-api/
+    - authentication api
+      - https://developers.meethue.com/develop/hue-api/remote-authentication-oauth/
+    - event api
+      - https://github.com/homegraph/philips-hue-push-client
+  - gnome https://github.com/vchlum/hue-lights
+    - log in journalctl
+    - event stream API use: [[file:~/src/hue-lights/extensionmenu.js::_handleEventStream(bridgeid, data) {]]
+
+     {"creationtime":"2022-11-15T18:31:18Z","data":[{"id":"6b5f6667-2063-4637-b70e-980c3350a6d3","name":"aiohue_hpbwhbtydy","type":"geofence_client"}],"id":"fd9cd6ed-aaa2-4f25-b9bc-417d91ad7c00","type":"update"}
+      
+  - diyHue https://github.com/diyhue/diyHue/
+  - emulated hue  https://github.com/hass-emulated-hue/core
+     - https://github.com/hass-emulated-hue/core/blob/master/emulated_hue/apiv1.py
+* Zigbee2mqtt
+** https://www.zigbee2mqtt.io/devices/9290022891.html
+** List lights
+mosquitto_sub -h sol.local -i cl1 -u homey -P homeypw -t homeassistant/light/+/light/config
+
+** Topics:
+    - configured lights homeassistant/light/+/light/config
+    - light state: zigbee2mqtt/friendly name
+      #+begin_src js
+        {
+          "brightness": 167,
+          "color": {
+            "x": 0.407,
+            "y": 0.3916
+          },
+          "color_mode": "color_temp",
+          "color_temp": 288,
+          "linkquality": 51,
+          "state": "OFF",
+          "update": {
+            "state": "idle"
+          },
+          "update_available": false
+        }
+      #+end_src
+    - light config: 
+      #+begin_src js
+        {
+          "availability": [
+            {
+              "topic": "zigbee2mqtt/bridge/state"
+            }
+          ],
+          "brightness": true,
+          "brightness_scale": 254,
+          "color_mode": true,
+          "command_topic": "zigbee2mqtt/Led Strip TV/set",
+          "device": {
+            "identifiers": [
+              "zigbee2mqtt_0x001788010bf4769e"
+            ],
+            "manufacturer": "Philips",
+            "model": "Hue white and color ambiance LightStrip plus (8718699703424)",
+            "name": "Led Strip TV",
+            "sw_version": "1.93.11"
+          },
+          "effect": true,
+          "effect_list": [
+            "blink",
+            "breathe",
+            "okay",
+            "channel_change",
+            "finish_effect",
+            "stop_effect"
+          ],
+          "json_attributes_topic": "zigbee2mqtt/Led Strip TV",
+          "max_mireds": 500,
+          "min_mireds": 150,
+          "name": "Led Strip TV",
+          "schema": "json",
+          "state_topic": "zigbee2mqtt/Led Strip TV",
+          "supported_color_modes": [
+            "xy",
+            "color_temp"
+          ],
+          "unique_id": "0x001788010bf4769e_light_zigbee2mqtt"
+        }
+#+end_src
+* Servant
+  https://docs.servant.dev/en/stable/cookbook/https/Https.html
+* Hue API https://developers.meethue.com/develop/hue-api/lights-api/

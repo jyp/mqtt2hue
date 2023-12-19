@@ -183,8 +183,8 @@ data LightConfig = LightConfig {
           json_attributes_topic :: Text,
           max_mireds :: Maybe Int,
           min_mireds :: Maybe Int,
-          name :: Text,
-          -- schema :: Text, -- always json
+          -- name :: Text, -- always null, use device name instead
+          -- schema :: Text, -- always "json"
           state_topic :: Text,
           supported_color_modes :: Maybe [ColorMode],
           unique_id :: Text
@@ -228,17 +228,14 @@ test0 = decode "[{\"friendly_name\":\"Living Room Upstairs\",\"id\":1,\"members\
 -- >>> test0
 -- Just [GroupConfig {_id = 1, friendly_name = "Living Room Upstairs", scenes = [], members = [GroupMember {ieee_address = 0x001788010bf4769e, endpoint = Opt1 11}]}]
 
-testLight2 :: Maybe LightConfig
-testLight2 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"brightness\":true,\"brightness_scale\":254,\"command_topic\":\"zigbee2mqtt/Master Bedroom Relay/set\",\"device\":{\"identifiers\":[\"zigbee2mqtt_0x9035eafffe93058f\"],\"manufacturer\":\"Vesternet\",\"model\":\"Zigbee dimmer (VES-ZB-DIM-004)\",\"name\":\"Master Bedroom Relay\",\"sw_version\":\"2.5.3_r52\"},\"json_attributes_topic\":\"zigbee2mqtt/Master Bedroom Relay\",\"name\":\"Master Bedroom Relay\",\"schema\":\"json\",\"state_topic\":\"zigbee2mqtt/Master Bedroom Relay\",\"unique_id\":\"0x9035eafffe93058f_light_zigbee2mqtt\"}"
+-- >>> decodeTestFile "examples/MQTT/light.json" :: IO (Maybe LightConfig)
+-- Just (LightConfig {brightness = True, brightness_scale = Just 254, color_mode = Just True, command_topic = "zigbee2mqtt/Ikea Floalt Basement/set", device = Device {identifiers = ["zigbee2mqtt_0xec1bbdfffe8ed00c"], manufacturer = "IKEA", model = "FLOALT LED light panel, dimmable, white spectrum (60x60 cm) (L1529)", name = "Ikea Floalt Basement", sw_version = "2.3.087"}, effect = Just True, effect_list = Just ["blink","breathe","okay","channel_change","finish_effect","stop_effect"], json_attributes_topic = "zigbee2mqtt/Ikea Floalt Basement", max_mireds = Just 454, min_mireds = Just 250, state_topic = "zigbee2mqtt/Ikea Floalt Basement", supported_color_modes = Just [TemperatureMode], unique_id = "0xec1bbdfffe8ed00c_light_zigbee2mqtt"})
 
--- >>> testLight2
--- Just (LightConfig {brightness = True, brightness_scale = Just 254, color_mode = Nothing, command_topic = "zigbee2mqtt/Master Bedroom Relay/set", device = Device {identifiers = ["zigbee2mqtt_0x9035eafffe93058f"], manufacturer = "Vesternet", model = "Zigbee dimmer (VES-ZB-DIM-004)", name = "Master Bedroom Relay", sw_version = "2.5.3_r52"}, effect = Nothing, effect_list = Nothing, json_attributes_topic = "zigbee2mqtt/Master Bedroom Relay", max_mireds = Nothing, min_mireds = Nothing, name = "Master Bedroom Relay", state_topic = "zigbee2mqtt/Master Bedroom Relay", supported_color_modes = Nothing, unique_id = "0x9035eafffe93058f_light_zigbee2mqtt"})
+testDev0 :: Maybe Device
+testDev0 = decode "{\"identifiers\":[\"zigbee2mqtt_0xec1bbdfffe8ed00c\"],\"manufacturer\":\"IKEA\",\"model\":\"FLOALT LED light panel, dimmable, white spectrum (60x60 cm) (L1529)\",\"name\":\"Ikea Floalt Basement\",\"sw_version\":\"2.3.087\"}"
 
-testLight1 :: Maybe LightConfig
-testLight1 = decode "{\"availability\":[{\"topic\":\"zigbee2mqtt/bridge/state\"}],\"brightness\":true,\"brightness_scale\":254,\"color_mode\":true,\"command_topic\":\"zigbee2mqtt/Led Strip TV/set\",\"device\":{\"identifiers\":[\"zigbee2mqtt_0x001788010bf4769e\"],\"manufacturer\":\"Philips\",\"model\":\"Hue white and color ambiance LightStrip plus (8718699703424)\",\"name\":\"Led Strip TV\",\"sw_version\":\"1.93.11\"},\"effect\":true,\"effect_list\":[\"blink\",\"breathe\",\"okay\",\"channel_change\",\"finish_effect\",\"stop_effect\"],\"json_attributes_topic\":\"zigbee2mqtt/Led Strip TV\",\"min_mireds\":150,\"name\":\"Led Strip TV\",\"schema\":\"json\",\"state_topic\":\"zigbee2mqtt/Led Strip TV\",\"supported_color_modes\":[\"xy\",\"color_temp\"],\"unique_id\":\"0x001788010bf4769e_light_zigbee2mqtt\"}"
-
--- >>> testLight1
--- Just (LightConfig {brightness = True, brightness_scale = Just 254, color_mode = True, command_topic = "zigbee2mqtt/Led Strip TV/set", device = Device {manufacturer = "Philips"}, effect = True, effect_list = ["blink","breathe","okay","channel_change","finish_effect","stop_effect"], json_attributes_topic = "zigbee2mqtt/Led Strip TV", max_mireds = Nothing, min_mireds = Just 150, name = "Led Strip TV", state_topic = "zigbee2mqtt/Led Strip TV", supported_color_modes = [XYMode,TemperatureMode], unique_id = "0x001788010bf4769e_light_zigbee2mqtt"})
+-- >>> testDev0
+-- Just (Device {identifiers = ["zigbee2mqtt_0xec1bbdfffe8ed00c"], manufacturer = "IKEA", model = "FLOALT LED light panel, dimmable, white spectrum (60x60 cm) (L1529)", name = "Ikea Floalt Basement", sw_version = "2.3.087"})
 
 -- >>> decodeTestFile "examples/MQTT/devices.json" :: IO (Maybe [ZigDevice])
 -- Just [ZigDevice {model_id = Nothing, network_address = 0, ieee_address = 0x00124b0025e1df38, endpoints = fromList [(1,Endpoint {bindings = []}),(2,Endpoint {bindings = []}),(3,Endpoint {bindings = []}),(4,Endpoint {bindings = []}),(5,Endpoint {bindings = []}),(6,Endpoint {bindings = []}),(8,Endpoint {bindings = []}),(10,Endpoint {bindings = []}),(11,Endpoint {bindings = []}),(12,Endpoint {bindings = []}),(13,Endpoint {bindings = []}),(47,Endpoint {bindings = []}),(110,Endpoint {bindings = []}),(242,Endpoint {bindings = []})]},ZigDevice {model_id = Just "LCL001", network_address = 31546, ieee_address = 0x001788010bf4769e, endpoints = fromList [(11,Endpoint {bindings = [Binding {cluster = "genOnOff", target = Target {_id = Nothing, _type = "endpoint"}},Binding {cluster = "genLevelCtrl", target = Target {_id = Nothing, _type = "endpoint"}}]}),(242,Endpoint {bindings = []})]},ZigDevice {model_id = Just "lumi.airrtc.agl001", network_address = 41905, ieee_address = 0x54ef44100057be39, endpoints = fromList [(1,Endpoint {bindings = []})]},ZigDevice {model_id = Just "RWL021", network_address = 15863, ieee_address = 0x0017880106e804ef, endpoints = fromList [(1,Endpoint {bindings = [Binding {cluster = "genScenes", target = Target {_id = Just 1, _type = "group"}},Binding {cluster = "genOnOff", target = Target {_id = Just 1, _type = "group"}},Binding {cluster = "genLevelCtrl", target = Target {_id = Just 1, _type = "group"}}]}),(2,Endpoint {bindings = [Binding {cluster = "manuSpecificUbisysDeviceSetup", target = Target {_id = Nothing, _type = "endpoint"}},Binding {cluster = "genPowerCfg", target = Target {_id = Nothing, _type = "endpoint"}}]})]}]
