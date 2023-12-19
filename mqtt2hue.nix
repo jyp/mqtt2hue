@@ -14,8 +14,8 @@ mkDerivation {
     owner = "jyp";
     repo = "mqtt2hue";
     # sha256 = "0fi3pq1bf89bk5iixphvhi6v84vnn6s22z90k14ac9qjvwy6f2dx";
-    hash = "sha256-Fl4slKplgSfPndDJxOcBxBCtibNCi6gBm/wNSIM6xgE=";
-    rev = "de52519f5f7efb87dbce2c0a69c6858997de5204";
+    hash = "sha256-tsuMjfDe4ruKUpVC/EsZZb9anbFgU5La5VsQnhECQ9M=";
+    rev = "26639e3b1b1c96fc30e00e7ca2501b16f6d4db18";
   };
   isLibrary = false;
   isExecutable = true;
