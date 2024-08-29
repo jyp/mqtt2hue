@@ -1,7 +1,11 @@
 { nixpkgs ? import <nixpkgs> {} }:
 let
-  # nixpkgs_source = fetchTarball https://github.com/NixOS/nixpkgs/archive/nixos-20.09.tar.gz;
-  nixpkgs_source = fetchTarball https://github.com/NixOS/nixpkgs/archive/nixos-22.11.tar.gz;
+  nixpkgs_source = fetchTarball https://github.com/NixOS/nixpkgs/archive/nixos-22.11.tar.gz; # known working
+  # nixpkgs_source = fetchTarball https://github.com/NixOS/nixpkgs/archive/nixos-23.11.tar.gz; # large-hashable broken
+  # nixpkgs_source = fetchTarball https://github.com/NixOS/nixpkgs/archive/nixos-24.05.tar.gz; # large-hashable broken
+  # large-hashable broken: a set of at least two subtle errors concerning:
+  # 1. generic sums don't get optimised
+  # 2. the hash of certain strings depend on how they are built (out of chunks)
   # nixpkgs_source = fetchTarball https://github.com/NixOS/nixpkgs/archive/fcab19deb78fbb5ea24e19b133cf34358176396a.tar.gz;
   overlays = [];
   myNix = import nixpkgs_source {inherit overlays; };
