@@ -8,19 +8,20 @@ let
   # 2. the hash of certain strings depend on how they are built (out of chunks)
   # nixpkgs_source = fetchTarball https://github.com/NixOS/nixpkgs/archive/fcab19deb78fbb5ea24e19b133cf34358176396a.tar.gz;
   overlays = [];
-  myNix = import nixpkgs_source {inherit overlays; };
+  myNix = import nixpkgs_source { };
 in
 with myNix.pkgs; 
-let hpDef = haskellPackages.override{
-      overrides = self: super: {
-        # pretty-compact = self.callPackage ./pretty-compact.nix {};
-        # typedflow = self.callPackage ./typedflow.nix {};
-      };};
-    hp = hpDef;
-    ghc = hp.ghcWithPackages (ps: with ps; ([ cabal-install servant servant-server aeson warp-tls lucid wai-enforce-https hashable servant-xml large-hashable ]));
+let hp = haskellPackages;
+    myGhc = hp.ghcWithPackages (ps: with ps; ([ cabal-install aeson attoparsec base base-compat
+
+                                                blaze-html blaze-markup bytestring containers directory hashable http-api-data
+                                                http-media http-types large-hashable
+                                                lucid mtl net-mqtt network
+                                                network-info network-multicast network-uri servant servant-server servant-xml string-conversions template-haskell text time unordered-containers vector wai
+                                                 wai-enforce-https wai-extra wai-logger warp warp-tls xmlbf yaml ]));
 in pkgs.stdenv.mkDerivation {
   name = "my-env-0";
-  buildInputs = [ glibcLocales ghc ];
+  buildInputs = [ glibcLocales myGhc ];
   shellHook = ''
     export LANG=en_US.UTF-8
     eval $(egrep ^export ${ghc}/bin/ghc)
